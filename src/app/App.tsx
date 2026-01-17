@@ -88,9 +88,15 @@ export default function App() {
   const handleCompanyChange = (companyId: string) => {
     setSelectedCompany(companyId);
     const binding = companyBindings.find((b: any) => b.companyId === companyId);
-    setCurrentRole(binding?.role);
+    setCurrentRole(binding?.role || currentRole);
     localStorage.setItem('selectedCompanyId', companyId);
   };
+
+  const effectiveBindings = companyBindings.length
+    ? companyBindings
+    : selectedCompany && currentRole
+      ? [{ companyId: selectedCompany, role: currentRole }]
+      : [];
 
   if (isLoading) {
     return (
@@ -110,11 +116,11 @@ export default function App() {
   }
 
   // Multi-company users need to select a company
-  if (companyBindings.length > 1 && !selectedCompany) {
+  if (effectiveBindings.length > 1 && !selectedCompany) {
     return (
       <>
         <CompanySelector 
-          companyBindings={companyBindings}
+          companyBindings={effectiveBindings}
           onSelectCompany={handleCompanyChange}
           onLogout={handleLogout}
         />
@@ -188,7 +194,7 @@ export default function App() {
     }
   };
 
-  if (companyBindings.length === 0) {
+  if (companyBindings.length === 0 && (!selectedCompany || !currentRole)) {
     return (
       <>
         <CompanySetupWizard
@@ -217,7 +223,7 @@ export default function App() {
             }
 
             const refreshedBindings = await refreshedBindingsPromise;
-            if (!refreshedBindings || refreshedBindings.length === 0) {
+            if (!immediateCompanyId && (!refreshedBindings || refreshedBindings.length === 0)) {
               toast.error('Unable to load your dashboard. Please try again.');
             }
           }}
@@ -236,7 +242,7 @@ export default function App() {
           accessToken={accessToken} 
           onLogout={handleLogout}
           companyId={selectedCompany!}
-          companyBindings={companyBindings}
+          companyBindings={effectiveBindings}
           onCompanyChange={handleCompanyChange}
         />
       )}
@@ -246,7 +252,7 @@ export default function App() {
           accessToken={accessToken} 
           onLogout={handleLogout}
           companyId={selectedCompany!}
-          companyBindings={companyBindings}
+          companyBindings={effectiveBindings}
           onCompanyChange={handleCompanyChange}
         />
       )}
@@ -256,7 +262,7 @@ export default function App() {
           accessToken={accessToken} 
           onLogout={handleLogout}
           companyId={selectedCompany!}
-          companyBindings={companyBindings}
+          companyBindings={effectiveBindings}
           onCompanyChange={handleCompanyChange}
         />
       )}
