@@ -147,6 +147,29 @@ export default function App() {
     });
   };
 
+  const refreshSessionBindings = async () => {
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        const bindings = data.companyBindings || [];
+        setCompanyBindings(bindings);
+        if (bindings.length > 0) {
+          applyCompanySelection(bindings[0].companyId, bindings[0].role);
+        }
+        return bindings;
+      }
+    } catch (error) {
+      console.error('Session refresh error:', error);
+    }
+
+    return null;
+  };
+
   const fetchFirstCompanyId = async () => {
     try {
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies`, {
@@ -170,37 +193,31 @@ export default function App() {
           user={user}
           accessToken={accessToken}
           onSetupComplete={async (createdCompanyId?: string) => {
-            // Refresh session to get new company bindings
-            try {
-              const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
-                headers: {
-                  'Authorization': `Bearer ${accessToken}`
-                }
-              });
-              const data = await response.json();
-              if (data.success) {
-                const bindings = data.companyBindings || [];
-                setCompanyBindings(bindings);
-                if (bindings.length > 0) {
-                  applyCompanySelection(bindings[0].companyId, bindings[0].role);
-                  return;
-                }
-              }
-            } catch (error) {
-              console.error('Session refresh error:', error);
-            }
-
             const storedCompanyId = localStorage.getItem('lastCreatedCompanyId');
-            const fallbackCompanyId = createdCompanyId || storedCompanyId || (await fetchFirstCompanyId());
+            const immediateCompanyId = createdCompanyId || storedCompanyId;
 
-            if (fallbackCompanyId) {
-              addLocalCompanyBinding(fallbackCompanyId, 'company_admin');
-              applyCompanySelection(fallbackCompanyId, 'company_admin');
+            if (immediateCompanyId) {
+              addLocalCompanyBinding(immediateCompanyId, 'company_admin');
+              applyCompanySelection(immediateCompanyId, 'company_admin');
               localStorage.removeItem('lastCreatedCompanyId');
-              return;
             }
 
-            toast.error('Unable to load your dashboard. Please try again.');
+            const refreshedBindingsPromise = refreshSessionBindings();
+
+            if (!immediateCompanyId) {
+              const fallbackCompanyId = await fetchFirstCompanyId();
+              if (fallbackCompanyId) {
+                addLocalCompanyBinding(fallbackCompanyId, 'company_admin');
+                applyCompanySelection(fallbackCompanyId, 'company_admin');
+                localStorage.removeItem('lastCreatedCompanyId');
+                return;
+              }
+            }
+
+            const refreshedBindings = await refreshedBindingsPromise;
+            if (!refreshedBindings || refreshedBindings.length === 0) {
+              toast.error('Unable to load your dashboard. Please try again.');
+            }
           }}
           onLogout={handleLogout}
         />
