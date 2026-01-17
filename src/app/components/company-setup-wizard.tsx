@@ -66,19 +66,13 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
       toast.success('Company created successfully!');
       setStep(2);
       setIsLoading(false);
+      setIsCompleting(true);
+      await onSetupComplete(companyId || undefined);
+      setIsCompleting(false);
     } catch (error: any) {
       console.error('Company creation error:', error);
       toast.error('Failed to create company');
       setIsLoading(false);
-    }
-  };
-
-  const handleComplete = async () => {
-    setIsCompleting(true);
-    try {
-      await onSetupComplete(createdCompanyId || undefined);
-    } finally {
-      setIsCompleting(false);
     }
   };
 
@@ -183,37 +177,9 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
                   <Check className="w-8 h-8 text-green-600" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Company Created Successfully!</h3>
-                <p className="text-gray-600 mb-6">
-                  Your company has been set up. You can now access your dashboard to:
+                <p className="text-gray-600">
+                  {isCompleting ? 'Opening your dashboard...' : 'Preparing your dashboard...'}
                 </p>
-                
-                <div className="text-left space-y-3 mb-6">
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Check className="w-5 h-5 text-green-600 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Create Facilities</p>
-                      <p className="text-sm text-gray-600">Add your restaurant branches or locations</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Check className="w-5 h-5 text-green-600 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Add Facility Managers</p>
-                      <p className="text-sm text-gray-600">Create accounts for your facility managers</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Check className="w-5 h-5 text-green-600 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Invite Contractors</p>
-                      <p className="text-sm text-gray-600">Assign contractors using their unique contractor ID</p>
-                    </div>
-                  </div>
-                </div>
-
-                <Button onClick={handleComplete} className="w-full" size="lg" disabled={isCompleting}>
-                  {isCompleting ? 'Opening Dashboard...' : 'Go to Dashboard'}
-                </Button>
               </div>
             </div>
           )}
