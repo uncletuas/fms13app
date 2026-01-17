@@ -7,11 +7,12 @@ import { projectId } from '/utils/supabase/info';
 
 interface CompanySelectorProps {
   companyBindings: any[];
+  accessToken: string;
   onSelectCompany: (companyId: string) => void;
   onLogout: () => void;
 }
 
-export function CompanySelector({ companyBindings, onSelectCompany, onLogout }: CompanySelectorProps) {
+export function CompanySelector({ companyBindings, accessToken, onSelectCompany, onLogout }: CompanySelectorProps) {
   const [companies, setCompanies] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -21,15 +22,14 @@ export function CompanySelector({ companyBindings, onSelectCompany, onLogout }: 
 
   const loadCompanies = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
+      if (!accessToken) {
         setIsLoading(false);
         return;
       }
       
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${accessToken}`
         }
       });
 

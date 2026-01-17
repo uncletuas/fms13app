@@ -17,6 +17,14 @@ const getSupabaseClient = () => createClient(
   Deno.env.get('SUPABASE_ANON_KEY') ?? '',
 );
 
+const getSupabaseAuthClient = () => {
+  const url = Deno.env.get('SUPABASE_URL') ?? '';
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const key = anonKey || serviceKey;
+  return createClient(url, key);
+};
+
 // Enable logger
 app.use('*', logger(console.log));
 
@@ -39,7 +47,7 @@ const verifyUser = async (request: Request) => {
     return { error: 'No token provided', user: null };
   }
   
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAuthClient();
   const { data: { user }, error } = await supabase.auth.getUser(accessToken);
   
   if (error || !user) {
@@ -222,6 +230,8 @@ app.post("/make-server-fc558f72/auth/signin", async (c) => {
     return c.json({ 
       success: true,
       accessToken: data.session.access_token,
+      refreshToken: data.session.refresh_token,
+      expiresIn: data.session.expires_in,
       user: userProfile || {
         id: data.user.id,
         email: data.user.email,
@@ -232,6 +242,190 @@ app.post("/make-server-fc558f72/auth/signin", async (c) => {
   } catch (error) {
     console.log('Signin exception:', error);
     return c.json({ error: 'Signin failed' }, 500);
+  }
+});
+
+// Company admin onboarding (register account + company in one step)
+app.post("/make-server-fc558f72/onboarding/company-admin", async (c) => {
+  try {
+    const { company, admin } = await c.req.json();
+
+    if (!company?.name || !admin?.email || !admin?.password || !admin?.name) {
+      return c.json({ error: 'Company name and admin details required' }, 400);
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+
+    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: admin.email,
+      password: admin.password,
+      user_metadata: { name: admin.name, role: 'company_admin' },
+      email_confirm: true
+    });
+
+    if (createError || !created.user) {
+      console.log('Company admin signup error:', createError);
+      return c.json({ error: createError?.message || 'Signup failed' }, 400);
+    }
+
+    const userId = created.user.id;
+    const userProfile = {
+      id: userId,
+      email: admin.email,
+      name: admin.name,
+      role: 'company_admin',
+      phone: admin.phone || '',
+      createdAt: new Date().toISOString(),
+      createdBy: userId,
+      isGlobalUser: true,
+    };
+
+    await kv.set(`user:${userId}`, userProfile);
+
+    const companyId = generateId('COM');
+    const companyRecord = {
+      id: companyId,
+      name: company.name,
+      address: company.address || '',
+      phone: company.phone || '',
+      industry: company.industry || '',
+      createdAt: new Date().toISOString(),
+      createdBy: userId,
+      status: 'active'
+    };
+
+    await kv.set(`company:${companyId}`, companyRecord);
+
+    const binding = {
+      userId,
+      companyId,
+      role: 'company_admin',
+      assignedAt: new Date().toISOString(),
+    };
+
+    await kv.set(`user-company:${userId}:${companyId}`, binding);
+
+    await logActivity({
+      entityType: 'company',
+      entityId: companyId,
+      action: 'company_created',
+      userId,
+      userName: admin.name,
+      userRole: 'company_admin',
+      companyId,
+      details: { companyName: company.name }
+    });
+
+    await logActivity({
+      entityType: 'user',
+      entityId: userId,
+      action: 'account_created',
+      userId,
+      userName: admin.name,
+      userRole: 'company_admin',
+      companyId,
+      details: { email: admin.email }
+    });
+
+    const supabaseClient = getSupabaseClient();
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.signInWithPassword({
+      email: admin.email,
+      password: admin.password,
+    });
+
+    if (sessionError || !sessionData.session?.access_token) {
+      console.log('Company admin session error:', sessionError);
+      return c.json({ error: 'Login failed' }, 401);
+    }
+
+    return c.json({
+      success: true,
+      accessToken: sessionData.session.access_token,
+      refreshToken: sessionData.session.refresh_token,
+      expiresIn: sessionData.session.expires_in,
+      user: userProfile,
+      company: companyRecord,
+      companyId,
+      companyBindings: [binding]
+    });
+  } catch (error) {
+    console.log('Company admin onboarding exception:', error);
+    return c.json({ error: 'Onboarding failed' }, 500);
+  }
+});
+
+// Contractor onboarding (register account + profile)
+app.post("/make-server-fc558f72/onboarding/contractor", async (c) => {
+  try {
+    const { email, password, name, phone, skills, specialization } = await c.req.json();
+
+    if (!email || !password || !name) {
+      return c.json({ error: 'Missing required fields' }, 400);
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+
+    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: { name, role: 'contractor' },
+      email_confirm: true
+    });
+
+    if (createError || !created.user) {
+      console.log('Contractor signup error:', createError);
+      return c.json({ error: createError?.message || 'Signup failed' }, 400);
+    }
+
+    const userId = created.user.id;
+    const userProfile = {
+      id: userId,
+      email,
+      name,
+      role: 'contractor',
+      phone: phone || '',
+      createdAt: new Date().toISOString(),
+      createdBy: userId,
+      isGlobalUser: true,
+      skills: skills || [],
+      specialization: specialization || '',
+      profileComplete: !!(skills && specialization)
+    };
+
+    await kv.set(`user:${userId}`, userProfile);
+
+    await logActivity({
+      entityType: 'user',
+      entityId: userId,
+      action: 'account_created',
+      userId,
+      userName: name,
+      userRole: 'contractor',
+      details: { email }
+    });
+
+    const supabaseClient = getSupabaseClient();
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (sessionError || !sessionData.session?.access_token) {
+      console.log('Contractor session error:', sessionError);
+      return c.json({ error: 'Login failed' }, 401);
+    }
+
+    return c.json({
+      success: true,
+      accessToken: sessionData.session.access_token,
+      refreshToken: sessionData.session.refresh_token,
+      expiresIn: sessionData.session.expires_in,
+      user: userProfile,
+      companyBindings: []
+    });
+  } catch (error) {
+    console.log('Contractor onboarding exception:', error);
+    return c.json({ error: 'Onboarding failed' }, 500);
   }
 });
 

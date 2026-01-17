@@ -4,11 +4,12 @@ import { AdminDashboard } from '@/app/components/admin-dashboard';
 import { FacilityManagerDashboard } from '@/app/components/facility-manager-dashboard';
 import { ContractorDashboard } from '@/app/components/contractor-dashboard';
 import { CompanySelector } from '@/app/components/company-selector';
-import { CompanySetupWizard } from '@/app/components/company-setup-wizard';
 import { ContractorInvitations } from '@/app/components/contractor-invitations';
 import { Toaster } from '@/app/components/ui/sonner';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
-import { toast } from 'sonner';
+import { Button } from '@/app/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { projectId } from '/utils/supabase/info';
+import { supabase } from '/utils/supabase/client';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -17,104 +18,104 @@ export default function App() {
   const [companyBindings, setCompanyBindings] = useState<any[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
-  const [showContractorInvitations, setShowContractorInvitations] = useState(false);
 
-  const parseJwtPayload = (token: string) => {
+  const persistProfile = (userData: any, bindings: any[]) => {
+    localStorage.setItem('userProfile', JSON.stringify(userData));
+    localStorage.setItem('companyBindings', JSON.stringify(bindings));
+  };
+
+  const loadStoredProfile = () => {
     try {
-      const payload = token.split('.')[1];
-      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-      const decoded = atob(normalized);
-      return JSON.parse(decoded);
+      const rawUser = localStorage.getItem('userProfile');
+      const rawBindings = localStorage.getItem('companyBindings');
+      return {
+        user: rawUser ? JSON.parse(rawUser) : null,
+        bindings: rawBindings ? JSON.parse(rawBindings) : [],
+      };
     } catch (error) {
-      return null;
+      return { user: null, bindings: [] };
     }
   };
 
-  const isValidToken = (token: string | null) => {
-    if (!token || token === 'undefined' || token === 'null') {
-      return false;
-    }
-    if (token.split('.').length !== 3) {
-      return false;
+  const bootstrapSession = async (token: string) => {
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success && data.user) {
+        setUser(data.user);
+        setCompanyBindings(data.companyBindings || []);
+        persistProfile(data.user, data.companyBindings || []);
+
+        const savedCompany = localStorage.getItem('selectedCompanyId');
+        if (savedCompany && data.companyBindings?.find((b: any) => b.companyId === savedCompany)) {
+          setSelectedCompany(savedCompany);
+          const binding = data.companyBindings.find((b: any) => b.companyId === savedCompany);
+          setCurrentRole(binding?.role);
+        } else if (data.companyBindings?.length > 0) {
+          setSelectedCompany(data.companyBindings[0].companyId);
+          setCurrentRole(data.companyBindings[0].role);
+        }
+        return;
+      }
+    } catch (error) {
+      console.error('Session bootstrap error:', error);
     }
 
-    const payload = parseJwtPayload(token);
-    if (!payload || !payload.sub || payload.role === 'anon') {
-      return false;
+    const cached = loadStoredProfile();
+    if (cached.user) {
+      setUser(cached.user);
+      setCompanyBindings(cached.bindings || []);
+      if (cached.bindings?.length > 0) {
+        setSelectedCompany(cached.bindings[0].companyId);
+        setCurrentRole(cached.bindings[0].role);
+      }
     }
-
-    const exp = Number(payload.exp || 0);
-    if (exp && exp * 1000 <= Date.now()) {
-      return false;
-    }
-
-    return true;
-  };
-
-  const getStoredToken = () => {
-    const token = localStorage.getItem('accessToken');
-    if (!isValidToken(token)) {
-      return '';
-    }
-    return token;
   };
 
   useEffect(() => {
-    // Check for existing session
-    const checkSession = async () => {
-      const token = getStoredToken();
+    const initSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+
       if (token) {
-        if (!accessToken) {
-          setAccessToken(token);
-        }
-        try {
-          const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          const data = await response.json();
-          if (data.success && data.user) {
-            setUser(data.user);
-            setAccessToken(token);
-            setCompanyBindings(data.companyBindings || []);
-            
-            // Restore selected company from localStorage
-            const savedCompany = localStorage.getItem('selectedCompanyId');
-            if (savedCompany && data.companyBindings?.find((b: any) => b.companyId === savedCompany)) {
-              setSelectedCompany(savedCompany);
-              const binding = data.companyBindings.find((b: any) => b.companyId === savedCompany);
-              setCurrentRole(binding?.role);
-            } else if (data.companyBindings?.length > 0) {
-              // Auto-select first company
-              setSelectedCompany(data.companyBindings[0].companyId);
-              setCurrentRole(data.companyBindings[0].role);
-            }
-          } else {
-            localStorage.removeItem('accessToken');
-          }
-        } catch (error) {
-          console.error('Session check error:', error);
-          localStorage.removeItem('accessToken');
-        }
-      } else if (localStorage.getItem('accessToken')) {
-        localStorage.removeItem('accessToken');
+        setAccessToken(token);
+        await bootstrapSession(token);
       }
+
       setIsLoading(false);
     };
 
-    checkSession();
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setUser(null);
+        setAccessToken('');
+        setCompanyBindings([]);
+        setSelectedCompany(null);
+        setCurrentRole(null);
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('companyBindings');
+        localStorage.removeItem('selectedCompanyId');
+      } else if (session.access_token) {
+        setAccessToken(session.access_token);
+      }
+    });
+
+    initSession();
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  const handleLoginSuccess = (userData: any, token: string, bindings: any[]) => {
-    if (!isValidToken(token)) {
-      toast.error('Login failed. Please try again.');
-      return;
-    }
+  const handleLoginSuccess = (userData: any, token: string, refreshToken: string, bindings: any[]) => {
     setUser(userData);
     setAccessToken(token);
     setCompanyBindings(bindings || []);
-    localStorage.setItem('accessToken', token);
+    persistProfile(userData, bindings || []);
     
     // Auto-select first company if available
     if (bindings && bindings.length > 0) {
@@ -125,12 +126,14 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    supabase.auth.signOut();
     setUser(null);
     setAccessToken('');
     setCompanyBindings([]);
     setSelectedCompany(null);
     setCurrentRole(null);
-    localStorage.removeItem('accessToken');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('companyBindings');
     localStorage.removeItem('selectedCompanyId');
   };
 
@@ -170,6 +173,7 @@ export default function App() {
       <>
         <CompanySelector 
           companyBindings={effectiveBindings}
+          accessToken={accessToken}
           onSelectCompany={handleCompanyChange}
           onLogout={handleLogout}
         />
@@ -178,116 +182,39 @@ export default function App() {
     );
   }
 
-  // No company bindings - show company setup wizard for new admins
-  const applyCompanySelection = (companyId: string, role: string) => {
-    setSelectedCompany(companyId);
-    setCurrentRole(role);
-    localStorage.setItem('selectedCompanyId', companyId);
-  };
-
-  const getAuthToken = () => (isValidToken(accessToken) ? accessToken : getStoredToken());
-
-  const addLocalCompanyBinding = (companyId: string, role: string) => {
-    setCompanyBindings((prev) => {
-      if (prev.some((binding) => binding.companyId === companyId)) {
-        return prev;
-      }
-      return [
-        ...prev,
-        {
-          userId: user?.id,
-          companyId,
-          role,
-          assignedAt: new Date().toISOString(),
-        },
-      ];
-    });
-  };
-
-  const refreshSessionBindings = async (options?: { allowEmpty?: boolean }) => {
-    const token = getAuthToken();
-    if (!token) {
-      return null;
-    }
-    try {
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
-        const bindings = data.companyBindings || [];
-        if (bindings.length > 0 || options?.allowEmpty) {
-          setCompanyBindings(bindings);
-          if (bindings.length > 0) {
-            applyCompanySelection(bindings[0].companyId, bindings[0].role);
-          }
-        }
-        return bindings;
-      }
-    } catch (error) {
-      console.error('Session refresh error:', error);
-    }
-
-    return null;
-  };
-
-  const fetchFirstCompanyId = async () => {
-    const token = getAuthToken();
-    if (!token) {
-      return null;
-    }
-    try {
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-      const firstCompany = data?.companies?.[0];
-      return firstCompany?.id || firstCompany?.companyId || null;
-    } catch (error) {
-      console.error('Company fetch error:', error);
-      return null;
-    }
-  };
-
+  // No company bindings - show contractor invitation state or support notice
   if (companyBindings.length === 0 && (!selectedCompany || !currentRole)) {
+    if (user?.role === 'contractor') {
+      return (
+        <>
+          <ContractorInvitations
+            user={user}
+            accessToken={accessToken}
+            onLogout={handleLogout}
+            onInvitationHandled={() => bootstrapSession(accessToken)}
+          />
+          <Toaster />
+        </>
+      );
+    }
+
     return (
       <>
-        <CompanySetupWizard
-          user={user}
-          accessToken={accessToken}
-          onSetupComplete={async (createdCompanyId?: string) => {
-            const storedCompanyId = localStorage.getItem('lastCreatedCompanyId');
-            const immediateCompanyId = createdCompanyId || storedCompanyId;
-
-            if (immediateCompanyId) {
-              addLocalCompanyBinding(immediateCompanyId, 'company_admin');
-              applyCompanySelection(immediateCompanyId, 'company_admin');
-              localStorage.removeItem('lastCreatedCompanyId');
-            }
-
-            const refreshedBindingsPromise = refreshSessionBindings({ allowEmpty: false });
-
-            if (!immediateCompanyId) {
-              const fallbackCompanyId = await fetchFirstCompanyId();
-              if (fallbackCompanyId) {
-                addLocalCompanyBinding(fallbackCompanyId, 'company_admin');
-                applyCompanySelection(fallbackCompanyId, 'company_admin');
-                localStorage.removeItem('lastCreatedCompanyId');
-                return;
-              }
-            }
-
-            const refreshedBindings = await refreshedBindingsPromise;
-            if (!immediateCompanyId && (!refreshedBindings || refreshedBindings.length === 0)) {
-              toast.error('Unable to load your dashboard. Please try again.');
-            }
-          }}
-          onLogout={handleLogout}
-        />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4">
+          <Card className="w-full max-w-lg border-white/10 bg-white/95 text-slate-900">
+            <CardHeader>
+              <CardTitle>Company setup required</CardTitle>
+              <CardDescription>
+                Your account is active but not linked to a company yet. Please contact your system administrator.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" onClick={handleLogout} className="w-full">
+                Logout
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
         <Toaster />
       </>
     );
