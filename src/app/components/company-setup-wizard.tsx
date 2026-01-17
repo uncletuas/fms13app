@@ -10,13 +10,15 @@ import { projectId } from '/utils/supabase/info';
 interface CompanySetupWizardProps {
   user: any;
   accessToken: string;
-  onSetupComplete: () => void;
+  onSetupComplete: (companyId?: string) => Promise<void>;
   onLogout: () => void;
 }
 
 export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogout }: CompanySetupWizardProps) {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [createdCompanyId, setCreatedCompanyId] = useState<string | null>(null);
   
   const [companyData, setCompanyData] = useState({
     name: '',
@@ -47,6 +49,12 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
         return;
       }
 
+      const companyId = data.company?.id || null;
+      if (!companyId) {
+        toast.error('Company created, but missing company ID.');
+      }
+
+      setCreatedCompanyId(companyId);
       toast.success('Company created successfully!');
       setStep(2);
       setIsLoading(false);
@@ -57,8 +65,13 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
     }
   };
 
-  const handleComplete = () => {
-    onSetupComplete();
+  const handleComplete = async () => {
+    setIsCompleting(true);
+    try {
+      await onSetupComplete(createdCompanyId || undefined);
+    } finally {
+      setIsCompleting(false);
+    }
   };
 
   return (
@@ -190,8 +203,8 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
                   </div>
                 </div>
 
-                <Button onClick={handleComplete} className="w-full" size="lg">
-                  Go to Dashboard
+                <Button onClick={handleComplete} className="w-full" size="lg" disabled={isCompleting}>
+                  {isCompleting ? 'Opening Dashboard...' : 'Go to Dashboard'}
                 </Button>
               </div>
             </div>

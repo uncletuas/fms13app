@@ -270,10 +270,10 @@ app.post("/make-server-fc558f72/companies", async (c) => {
       return c.json({ error: 'Unauthorized' }, 401);
     }
 
-    const { name, address, phone, industry, adminEmail, adminName, adminPassword, adminPhone } = await c.req.json();
+    const { name, address, phone, industry, adminName } = await c.req.json();
     
-    if (!name || !adminEmail || !adminName || !adminPassword) {
-      return c.json({ error: 'Company name and admin details required' }, 400);
+    if (!name) {
+      return c.json({ error: 'Company name required' }, 400);
     }
 
     const companyId = generateId('COM');

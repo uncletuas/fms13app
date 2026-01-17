@@ -8,6 +8,7 @@ import { CompanySetupWizard } from '@/app/components/company-setup-wizard';
 import { ContractorInvitations } from '@/app/components/contractor-invitations';
 import { Toaster } from '@/app/components/ui/sonner';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { toast } from 'sonner';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -123,28 +124,63 @@ export default function App() {
   }
 
   // No company bindings - show company setup wizard for new admins
+  const applyCompanySelection = (companyId: string, role: string) => {
+    setSelectedCompany(companyId);
+    setCurrentRole(role);
+    localStorage.setItem('selectedCompanyId', companyId);
+  };
+
+  const addLocalCompanyBinding = (companyId: string, role: string) => {
+    setCompanyBindings((prev) => {
+      if (prev.some((binding) => binding.companyId === companyId)) {
+        return prev;
+      }
+      return [
+        ...prev,
+        {
+          userId: user?.id,
+          companyId,
+          role,
+          assignedAt: new Date().toISOString(),
+        },
+      ];
+    });
+  };
+
   if (companyBindings.length === 0) {
     return (
       <>
         <CompanySetupWizard
           user={user}
           accessToken={accessToken}
-          onSetupComplete={async () => {
+          onSetupComplete={async (createdCompanyId?: string) => {
             // Refresh session to get new company bindings
-            const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
-              headers: {
-                'Authorization': `Bearer ${accessToken}`
+            try {
+              const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
+                headers: {
+                  'Authorization': `Bearer ${accessToken}`
+                }
+              });
+              const data = await response.json();
+              if (data.success) {
+                const bindings = data.companyBindings || [];
+                setCompanyBindings(bindings);
+                if (bindings.length > 0) {
+                  applyCompanySelection(bindings[0].companyId, bindings[0].role);
+                  return;
+                }
               }
-            });
-            const data = await response.json();
-            if (data.success) {
-              setCompanyBindings(data.companyBindings || []);
-              if (data.companyBindings?.length > 0) {
-                setSelectedCompany(data.companyBindings[0].companyId);
-                setCurrentRole(data.companyBindings[0].role);
-                localStorage.setItem('selectedCompanyId', data.companyBindings[0].companyId);
-              }
+            } catch (error) {
+              console.error('Session refresh error:', error);
             }
+
+            if (createdCompanyId) {
+              addLocalCompanyBinding(createdCompanyId, 'company_admin');
+              applyCompanySelection(createdCompanyId, 'company_admin');
+              return;
+            }
+
+            toast.error('Unable to load your dashboard. Please try again.');
           }}
           onLogout={handleLogout}
         />
