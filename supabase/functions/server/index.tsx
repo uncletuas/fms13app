@@ -39,10 +39,11 @@ const verifyUser = async (request: Request) => {
     return { error: 'No token provided', user: null };
   }
   
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseClient();
   const { data: { user }, error } = await supabase.auth.getUser(accessToken);
   
   if (error || !user) {
+    console.log('Verify user error:', error?.message || error);
     return { error: 'Unauthorized', user: null };
   }
   
