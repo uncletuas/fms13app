@@ -312,7 +312,7 @@ app.post("/make-server-fc558f72/companies", async (c) => {
       details: { companyName: name }
     });
 
-    return c.json({ success: true, company });
+    return c.json({ success: true, company, companyId });
   } catch (error) {
     console.log('Create company error:', error);
     return c.json({ error: 'Failed to create company' }, 500);

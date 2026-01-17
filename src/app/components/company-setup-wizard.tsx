@@ -27,6 +27,53 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
     industry: ''
   });
 
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const resolveCompanyId = async (initialId: string | null) => {
+    if (initialId) {
+      return initialId;
+    }
+
+    const normalize = (value: string) => value.trim().toLowerCase();
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        const data = await response.json();
+
+        if (data?.success && Array.isArray(data.companies) && data.companies.length > 0) {
+          const normalizedName = normalize(companyData.name);
+          const namedMatches = data.companies.filter((company: any) =>
+            normalize(company?.name || '') === normalizedName
+          );
+          const candidates = namedMatches.length > 0 ? namedMatches : data.companies;
+
+          const sorted = [...candidates].sort((a: any, b: any) => {
+            const aTime = new Date(a?.createdAt || 0).getTime();
+            const bTime = new Date(b?.createdAt || 0).getTime();
+            return bTime - aTime;
+          });
+
+          const match = sorted[0];
+          const resolvedId = match?.id || match?.companyId || null;
+          if (resolvedId) {
+            return resolvedId;
+          }
+        }
+      } catch (error) {
+        console.error('Company lookup error:', error);
+      }
+
+      await wait(800);
+    }
+
+    return null;
+  };
+
   const handleCreateCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -49,25 +96,27 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
         return;
       }
 
-      const companyId =
+      const responseCompanyId =
         data.company?.id ||
         data.company?.companyId ||
         data.companyId ||
         data.id ||
         null;
-      if (!companyId) {
-        toast.error('Company created, but missing company ID.');
-      }
-
-      setCreatedCompanyId(companyId);
-      if (companyId) {
-        localStorage.setItem('lastCreatedCompanyId', companyId);
-      }
       toast.success('Company created successfully!');
       setStep(2);
       setIsLoading(false);
       setIsCompleting(true);
-      await onSetupComplete(companyId || undefined);
+
+      const companyId = await resolveCompanyId(responseCompanyId);
+      if (!companyId) {
+        toast.error('Company created, but missing company ID.');
+        setIsCompleting(false);
+        return;
+      }
+
+      setCreatedCompanyId(companyId);
+      localStorage.setItem('lastCreatedCompanyId', companyId);
+      await onSetupComplete(companyId);
       setIsCompleting(false);
     } catch (error: any) {
       console.error('Company creation error:', error);
