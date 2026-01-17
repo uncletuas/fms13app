@@ -27,11 +27,36 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
     industry: ''
   });
 
+  const parseJwtPayload = (token: string) => {
+    try {
+      const payload = token.split('.')[1];
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = atob(normalized);
+      return JSON.parse(decoded);
+    } catch (error) {
+      return null;
+    }
+  };
+
   const isValidToken = (token: string | null) => {
     if (!token || token === 'undefined' || token === 'null') {
       return false;
     }
-    return token.split('.').length === 3;
+    if (token.split('.').length !== 3) {
+      return false;
+    }
+
+    const payload = parseJwtPayload(token);
+    if (!payload || !payload.sub || payload.role === 'anon') {
+      return false;
+    }
+
+    const exp = Number(payload.exp || 0);
+    if (exp && exp * 1000 <= Date.now()) {
+      return false;
+    }
+
+    return true;
   };
 
   const getAuthToken = () => {

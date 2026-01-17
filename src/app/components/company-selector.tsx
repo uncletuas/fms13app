@@ -22,6 +22,10 @@ export function CompanySelector({ companyBindings, onSelectCompany, onLogout }: 
   const loadCompanies = async () => {
     try {
       const token = localStorage.getItem('accessToken');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
       
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies`, {
         headers: {

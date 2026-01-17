@@ -37,6 +37,38 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
     specialization: ''
   });
 
+  const parseJwtPayload = (token: string) => {
+    try {
+      const payload = token.split('.')[1];
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = atob(normalized);
+      return JSON.parse(decoded);
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const isValidSessionToken = (token: string | null) => {
+    if (!token || token === 'undefined' || token === 'null') {
+      return false;
+    }
+    if (token.split('.').length !== 3) {
+      return false;
+    }
+
+    const payload = parseJwtPayload(token);
+    if (!payload || !payload.sub || payload.role === 'anon') {
+      return false;
+    }
+
+    const exp = Number(payload.exp || 0);
+    if (exp && exp * 1000 <= Date.now()) {
+      return false;
+    }
+
+    return true;
+  };
+
   const handleRegisterCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -112,7 +144,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
       if (data.error) {
         toast.error(data.error);
       } else {
-        if (!data.accessToken) {
+        if (!isValidSessionToken(data.accessToken)) {
           toast.error('Login failed. Please try again.');
           return;
         }
