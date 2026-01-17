@@ -147,7 +147,7 @@ export default function App() {
     });
   };
 
-  const refreshSessionBindings = async () => {
+  const refreshSessionBindings = async (options?: { allowEmpty?: boolean }) => {
     try {
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
         headers: {
@@ -157,9 +157,11 @@ export default function App() {
       const data = await response.json();
       if (data.success) {
         const bindings = data.companyBindings || [];
-        setCompanyBindings(bindings);
-        if (bindings.length > 0) {
-          applyCompanySelection(bindings[0].companyId, bindings[0].role);
+        if (bindings.length > 0 || options?.allowEmpty) {
+          setCompanyBindings(bindings);
+          if (bindings.length > 0) {
+            applyCompanySelection(bindings[0].companyId, bindings[0].role);
+          }
         }
         return bindings;
       }
@@ -202,7 +204,7 @@ export default function App() {
               localStorage.removeItem('lastCreatedCompanyId');
             }
 
-            const refreshedBindingsPromise = refreshSessionBindings();
+            const refreshedBindingsPromise = refreshSessionBindings({ allowEmpty: false });
 
             if (!immediateCompanyId) {
               const fallbackCompanyId = await fetchFirstCompanyId();
