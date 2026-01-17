@@ -112,6 +112,10 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
       if (data.error) {
         toast.error(data.error);
       } else {
+        if (!data.accessToken) {
+          toast.error('Login failed. Please try again.');
+          return;
+        }
         toast.success('Login successful!');
         onLoginSuccess(data.user, data.accessToken, data.companyBindings || []);
       }

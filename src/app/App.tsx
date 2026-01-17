@@ -19,10 +19,25 @@ export default function App() {
   const [currentRole, setCurrentRole] = useState<string | null>(null);
   const [showContractorInvitations, setShowContractorInvitations] = useState(false);
 
+  const isValidToken = (token: string | null) => {
+    if (!token || token === 'undefined' || token === 'null') {
+      return false;
+    }
+    return token.split('.').length === 3;
+  };
+
+  const getStoredToken = () => {
+    const token = localStorage.getItem('accessToken');
+    if (!isValidToken(token)) {
+      return '';
+    }
+    return token;
+  };
+
   useEffect(() => {
     // Check for existing session
     const checkSession = async () => {
-      const token = localStorage.getItem('accessToken');
+      const token = getStoredToken();
       if (token) {
         if (!accessToken) {
           setAccessToken(token);
@@ -57,6 +72,8 @@ export default function App() {
           console.error('Session check error:', error);
           localStorage.removeItem('accessToken');
         }
+      } else if (localStorage.getItem('accessToken')) {
+        localStorage.removeItem('accessToken');
       }
       setIsLoading(false);
     };
@@ -65,6 +82,10 @@ export default function App() {
   }, []);
 
   const handleLoginSuccess = (userData: any, token: string, bindings: any[]) => {
+    if (!isValidToken(token)) {
+      toast.error('Login failed. Please try again.');
+      return;
+    }
     setUser(userData);
     setAccessToken(token);
     setCompanyBindings(bindings || []);
@@ -139,7 +160,7 @@ export default function App() {
     localStorage.setItem('selectedCompanyId', companyId);
   };
 
-  const getAuthToken = () => accessToken || localStorage.getItem('accessToken') || '';
+  const getAuthToken = () => (isValidToken(accessToken) ? accessToken : getStoredToken());
 
   const addLocalCompanyBinding = (companyId: string, role: string) => {
     setCompanyBindings((prev) => {

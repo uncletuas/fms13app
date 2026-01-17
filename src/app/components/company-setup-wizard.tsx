@@ -27,7 +27,20 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
     industry: ''
   });
 
-  const getAuthToken = () => accessToken || localStorage.getItem('accessToken') || '';
+  const isValidToken = (token: string | null) => {
+    if (!token || token === 'undefined' || token === 'null') {
+      return false;
+    }
+    return token.split('.').length === 3;
+  };
+
+  const getAuthToken = () => {
+    if (isValidToken(accessToken)) {
+      return accessToken;
+    }
+    const stored = localStorage.getItem('accessToken');
+    return isValidToken(stored) ? stored : '';
+  };
 
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

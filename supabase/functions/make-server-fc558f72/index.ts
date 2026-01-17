@@ -208,6 +208,9 @@ app.post("/make-server-fc558f72/auth/signin", async (c) => {
       console.log('Signin error:', error);
       return c.json({ error: error.message }, 401);
     }
+    if (!data.session?.access_token) {
+      return c.json({ error: 'Login failed' }, 401);
+    }
 
     // Get user profile
     const userProfile = await kv.get(`user:${data.user.id}`);
