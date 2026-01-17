@@ -49,12 +49,20 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
         return;
       }
 
-      const companyId = data.company?.id || null;
+      const companyId =
+        data.company?.id ||
+        data.company?.companyId ||
+        data.companyId ||
+        data.id ||
+        null;
       if (!companyId) {
         toast.error('Company created, but missing company ID.');
       }
 
       setCreatedCompanyId(companyId);
+      if (companyId) {
+        localStorage.setItem('lastCreatedCompanyId', companyId);
+      }
       toast.success('Company created successfully!');
       setStep(2);
       setIsLoading(false);

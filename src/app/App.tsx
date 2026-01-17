@@ -147,6 +147,22 @@ export default function App() {
     });
   };
 
+  const fetchFirstCompanyId = async () => {
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      const data = await response.json();
+      const firstCompany = data?.companies?.[0];
+      return firstCompany?.id || firstCompany?.companyId || null;
+    } catch (error) {
+      console.error('Company fetch error:', error);
+      return null;
+    }
+  };
+
   if (companyBindings.length === 0) {
     return (
       <>
@@ -174,9 +190,13 @@ export default function App() {
               console.error('Session refresh error:', error);
             }
 
-            if (createdCompanyId) {
-              addLocalCompanyBinding(createdCompanyId, 'company_admin');
-              applyCompanySelection(createdCompanyId, 'company_admin');
+            const storedCompanyId = localStorage.getItem('lastCreatedCompanyId');
+            const fallbackCompanyId = createdCompanyId || storedCompanyId || (await fetchFirstCompanyId());
+
+            if (fallbackCompanyId) {
+              addLocalCompanyBinding(fallbackCompanyId, 'company_admin');
+              applyCompanySelection(fallbackCompanyId, 'company_admin');
+              localStorage.removeItem('lastCreatedCompanyId');
               return;
             }
 
