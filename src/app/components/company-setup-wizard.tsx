@@ -27,6 +27,8 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
     industry: ''
   });
 
+  const getAuthToken = () => accessToken || localStorage.getItem('accessToken') || '';
+
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const resolveCompanyId = async (initialId: string | null) => {
@@ -38,9 +40,13 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
+        const token = getAuthToken();
+        if (!token) {
+          return null;
+        }
         const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies`, {
           headers: {
-            'Authorization': `Bearer ${accessToken}`
+            'Authorization': `Bearer ${token}`
           }
         });
         const data = await response.json();
@@ -79,11 +85,17 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
     setIsLoading(true);
 
     try {
+      const token = getAuthToken();
+      if (!token) {
+        toast.error('Session expired. Please log in again.');
+        setIsLoading(false);
+        return;
+      }
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(companyData)
       });

@@ -24,6 +24,9 @@ export default function App() {
     const checkSession = async () => {
       const token = localStorage.getItem('accessToken');
       if (token) {
+        if (!accessToken) {
+          setAccessToken(token);
+        }
         try {
           const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
             headers: {
@@ -136,6 +139,8 @@ export default function App() {
     localStorage.setItem('selectedCompanyId', companyId);
   };
 
+  const getAuthToken = () => accessToken || localStorage.getItem('accessToken') || '';
+
   const addLocalCompanyBinding = (companyId: string, role: string) => {
     setCompanyBindings((prev) => {
       if (prev.some((binding) => binding.companyId === companyId)) {
@@ -154,10 +159,14 @@ export default function App() {
   };
 
   const refreshSessionBindings = async (options?: { allowEmpty?: boolean }) => {
+    const token = getAuthToken();
+    if (!token) {
+      return null;
+    }
     try {
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const data = await response.json();
@@ -179,10 +188,14 @@ export default function App() {
   };
 
   const fetchFirstCompanyId = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      return null;
+    }
     try {
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const data = await response.json();
