@@ -49,7 +49,10 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   });
   
   const [issueData, setIssueData] = useState({
+    taskType: 'equipment',
+    title: '',
     equipmentId: '',
+    facilityId: '',
     description: '',
     priority: 'medium'
   });
@@ -65,23 +68,39 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     }
   }, [companyId]);
 
+  useEffect(() => {
+    if (!companyId) return;
+    const interval = setInterval(() => loadDashboardData(), 30000);
+    const handleFocus = () => loadDashboardData();
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [companyId]);
+
   const loadDashboardData = async () => {
     try {
       const [statsRes, facilitiesRes, equipmentRes, issuesRes, contractorsRes] = await Promise.all([
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/dashboard/stats?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/facilities?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/contractors?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         })
       ]);
 
@@ -140,13 +159,38 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     e.preventDefault();
     
     try {
+      if (issueData.taskType === 'general' && (!issueData.title || !issueData.facilityId)) {
+        toast.error('Task title and facility are required');
+        return;
+      }
+      if (issueData.taskType === 'equipment' && !issueData.equipmentId) {
+        toast.error('Equipment is required');
+        return;
+      }
+
+      const payload = issueData.taskType === 'general'
+        ? {
+            title: issueData.title,
+            facilityId: issueData.facilityId,
+            companyId,
+            description: issueData.description,
+            priority: issueData.priority,
+            taskType: 'general'
+          }
+        : {
+            equipmentId: issueData.equipmentId,
+            description: issueData.description,
+            priority: issueData.priority,
+            taskType: 'equipment'
+          };
+
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
-        body: JSON.stringify(issueData)
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
@@ -154,7 +198,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
       if (data.success) {
         toast.success('Issue reported successfully');
         setIsCreateIssueOpen(false);
-        setIssueData({ equipmentId: '', description: '', priority: 'medium' });
+        setIssueData({ taskType: 'equipment', title: '', equipmentId: '', facilityId: '', description: '', priority: 'medium' });
         loadDashboardData();
       } else {
         toast.error(data.error || 'Failed to report issue');
@@ -246,6 +290,31 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
 
     const config = priorityConfig[priority] || { label: priority, className: 'bg-gray-500 text-white' };
     return <Badge className={config.className}>{config.label}</Badge>;
+  };
+
+  const getContractorName = (contractorId: string | null) => {
+    if (!contractorId) return 'Unassigned';
+    const contractor = contractors.find((item) => item.id === contractorId);
+    return contractor?.name || contractorId;
+  };
+
+  const renderAttachmentList = (attachments?: any[]) => {
+    if (!attachments?.length) return null;
+    return (
+      <div className="mt-2 space-y-1">
+        {attachments.map((file, index) => (
+          <a
+            key={file.path || `${file.url}-${index}`}
+            href={file.url}
+            target="_blank"
+            rel="noreferrer"
+            className="block text-xs text-blue-600 hover:underline"
+          >
+            {file.name || `Attachment ${index + 1}`}
+          </a>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -360,28 +429,78 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Report New Issue</DialogTitle>
-                        <DialogDescription>Report an equipment issue</DialogDescription>
+                        <DialogDescription>Report an equipment issue or general task</DialogDescription>
                       </DialogHeader>
                       <form onSubmit={handleCreateIssue} className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="issue-equipment">Equipment</Label>
+                          <Label htmlFor="issue-type">Task Type</Label>
                           <Select
-                            value={issueData.equipmentId}
-                            onValueChange={(value) => setIssueData({ ...issueData, equipmentId: value })}
-                            required
+                            value={issueData.taskType}
+                            onValueChange={(value) => setIssueData({ ...issueData, taskType: value, equipmentId: value === 'general' ? '' : issueData.equipmentId })}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select equipment" />
+                              <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {equipment.map((eq) => (
-                                <SelectItem key={eq.id} value={eq.id}>
-                                  {eq.name} - {eq.category}
-                                </SelectItem>
-                              ))}
+                              <SelectItem value="equipment">Equipment Issue</SelectItem>
+                              <SelectItem value="general">General Task</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {issueData.taskType === 'general' ? (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="issue-title">Task Title</Label>
+                              <Input
+                                id="issue-title"
+                                value={issueData.title}
+                                onChange={(e) => setIssueData({ ...issueData, title: e.target.value })}
+                                placeholder="Generator maintenance"
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="issue-facility">Facility</Label>
+                              <Select
+                                value={issueData.facilityId}
+                                onValueChange={(value) => setIssueData({ ...issueData, facilityId: value })}
+                                required
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select facility" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {facilities.map((facility) => (
+                                    <SelectItem key={facility.id} value={facility.id}>
+                                      {facility.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="space-y-2">
+                            <Label htmlFor="issue-equipment">Equipment</Label>
+                            <Select
+                              value={issueData.equipmentId}
+                              onValueChange={(value) => setIssueData({ ...issueData, equipmentId: value })}
+                              required
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select equipment" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {equipment.map((eq) => (
+                                  <SelectItem key={eq.id} value={eq.id}>
+                                    {eq.name} - {eq.category}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <Label htmlFor="issue-description">Description</Label>
                           <Textarea
@@ -446,6 +565,12 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                           </div>
                         )}
                         
+                        {issue.assignedTo && (
+                          <div className="text-xs text-gray-500 mb-2">
+                            Assigned to: <span className="font-medium">{getContractorName(issue.assignedTo)}</span>
+                          </div>
+                        )}
+
                         {!issue.assignedTo && issue.status === 'created' && (
                           <div className="mt-3 pt-3 border-t">
                             <Label className="text-xs">Assign Contractor:</Label>
@@ -464,6 +589,24 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                           </div>
                         )}
                         
+                        {issue.assignedTo && !['completed', 'approved', 'closed'].includes(issue.status) && (
+                          <div className="mt-3 pt-3 border-t">
+                            <Label className="text-xs">Change Contractor:</Label>
+                            <Select value={issue.assignedTo} onValueChange={(contractorId) => handleAssignContractor(issue.id, contractorId)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Select contractor" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {contractors.map((contractor) => (
+                                  <SelectItem key={contractor.id} value={contractor.id}>
+                                    {contractor.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
                         {issue.status === 'completed' && (
                           <div className="mt-3 pt-3 border-t">
                             <Button 
@@ -707,6 +850,52 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                   branch={selectedIssue.reportedBy.branch}
                   contact={selectedIssue.reportedBy.contact}
                 />
+              )}
+
+              {selectedIssue.contractorResponse && (
+                <div className="p-3 border rounded-lg">
+                  <h4 className="font-semibold mb-2">Contractor Response</h4>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p><span className="font-medium">Decision:</span> {selectedIssue.contractorResponse.decision}</p>
+                    <p><span className="font-medium">Proposed cost:</span> {selectedIssue.contractorResponse.proposedCost || 0}</p>
+                    {selectedIssue.contractorResponse.reason && (
+                      <p><span className="font-medium">Reason:</span> {selectedIssue.contractorResponse.reason}</p>
+                    )}
+                    {selectedIssue.contractorResponse.proposal && (
+                      <p><span className="font-medium">Proposal:</span> {selectedIssue.contractorResponse.proposal}</p>
+                    )}
+                  </div>
+                  {renderAttachmentList(selectedIssue.contractorResponse.proposalAttachments)}
+                </div>
+              )}
+
+              {selectedIssue.completion && (
+                <div className="p-3 border rounded-lg">
+                  <h4 className="font-semibold mb-2">Completion Report</h4>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p><span className="font-medium">Final cost:</span> {selectedIssue.completion.finalCost || 0}</p>
+                    <p><span className="font-medium">Execution report:</span> {selectedIssue.completion.executionReport}</p>
+                    {selectedIssue.completion.workPerformed && (
+                      <p><span className="font-medium">Work performed:</span> {selectedIssue.completion.workPerformed}</p>
+                    )}
+                  </div>
+                  {renderAttachmentList(selectedIssue.completion.reportAttachments)}
+                  {selectedIssue.completion.proofDocuments?.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {selectedIssue.completion.proofDocuments.map((doc: string, index: number) => (
+                        <a
+                          key={`${doc}-${index}`}
+                          href={doc}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block text-xs text-blue-600 hover:underline"
+                        >
+                          Proof Document {index + 1}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
               {selectedIssue.status === 'completed' && (

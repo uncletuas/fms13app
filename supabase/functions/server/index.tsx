@@ -25,6 +25,12 @@ const getSupabaseAuthClient = () => {
   return createClient(url, key);
 };
 
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
+const RESEND_FROM = Deno.env.get('RESEND_FROM') ?? 'FMS13 <onboarding@resend.dev>';
+const ATTACHMENTS_BUCKET = Deno.env.get('ATTACHMENTS_BUCKET')
+  ?? Deno.env.get('SUPABASE_ATTACHMENTS_BUCKET')
+  ?? 'fms13-attachments';
+
 // Enable logger
 app.use('*', logger(console.log));
 
@@ -95,9 +101,144 @@ const checkCompanyAccess = async (userId: string, companyId: string) => {
   return binding;
 };
 
+const sanitizeFileName = (name: string) => {
+  return name.replace(/[^a-zA-Z0-9._-]/g, '_');
+};
+
+const sendEmail = async (params: { to: string | string[]; subject: string; html: string }) => {
+  if (!RESEND_API_KEY) {
+    console.log('Resend API key not configured; skipping email.');
+    return;
+  }
+
+  const toList = Array.isArray(params.to) ? params.to : [params.to];
+  const payload = {
+    from: RESEND_FROM,
+    to: toList,
+    subject: params.subject,
+    html: params.html,
+  };
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.log('Resend email error:', errorText);
+  }
+};
+
+const getUserEmail = async (userId: string) => {
+  const profile = await kv.get(`user:${userId}`);
+  if (profile?.email) {
+    return profile.email;
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (error) {
+    console.log('Lookup user email error:', error.message);
+    return null;
+  }
+  return data?.user?.email || null;
+};
+
+const getCompanyAdminEmails = async (companyId: string) => {
+  const bindings = await kv.getByPrefix('user-company:');
+  const adminBindings = bindings.filter((binding: any) => binding.companyId === companyId && binding.role === 'company_admin');
+  const emails = await Promise.all(adminBindings.map((binding: any) => getUserEmail(binding.userId)));
+  return emails.filter((email: string | null) => email);
+};
+
+const ensureAttachmentsBucket = async (supabaseAdmin: ReturnType<typeof createClient>) => {
+  const { data, error } = await supabaseAdmin.storage.getBucket(ATTACHMENTS_BUCKET);
+  if (!data && error) {
+    const { error: createError } = await supabaseAdmin.storage.createBucket(ATTACHMENTS_BUCKET, {
+      public: true,
+    });
+    if (createError) {
+      console.log('Create bucket error:', createError.message);
+    }
+  }
+};
+
 // Health check endpoint
 app.get("/make-server-fc558f72/health", (c) => {
   return c.json({ status: "ok" });
+});
+
+// ============================================
+// ATTACHMENTS ROUTES
+// ============================================
+
+app.post("/make-server-fc558f72/uploads", async (c) => {
+  try {
+    const { error, user } = await verifyUser(c.req.raw);
+    if (error || !user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const formData = await c.req.formData();
+    const issueId = formData.get('issueId')?.toString();
+    const kind = formData.get('kind')?.toString() || 'general';
+    const file = formData.get('file');
+
+    if (!issueId || !(file instanceof File)) {
+      return c.json({ error: 'Issue ID and file are required' }, 400);
+    }
+
+    const issue = await kv.get(`issue:${issueId}`);
+    if (!issue) {
+      return c.json({ error: 'Issue not found' }, 404);
+    }
+
+    const binding = await checkCompanyAccess(user.id, issue.companyId);
+    if (!binding) {
+      return c.json({ error: 'No access to this issue' }, 403);
+    }
+
+    if (binding.role === 'contractor' && issue.assignedTo !== user.id) {
+      return c.json({ error: 'Only assigned contractors can upload attachments' }, 403);
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+    await ensureAttachmentsBucket(supabaseAdmin);
+
+    const safeName = sanitizeFileName(file.name);
+    const path = `${issue.companyId}/${issueId}/${kind}/${Date.now()}-${safeName}`;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+
+    const { error: uploadError } = await supabaseAdmin
+      .storage
+      .from(ATTACHMENTS_BUCKET)
+      .upload(path, bytes, { contentType: file.type, upsert: false });
+
+    if (uploadError) {
+      console.log('Upload error:', uploadError.message);
+      return c.json({ error: 'Failed to upload attachment' }, 500);
+    }
+
+    const { data: publicData } = supabaseAdmin.storage.from(ATTACHMENTS_BUCKET).getPublicUrl(path);
+    return c.json({
+      success: true,
+      attachment: {
+        url: publicData.publicUrl,
+        path,
+        name: file.name,
+        type: file.type,
+        size: file.size
+      }
+    });
+  } catch (error) {
+    console.log('Upload attachment error:', error);
+    return c.json({ error: 'Failed to upload attachment' }, 500);
+  }
 });
 
 // ============================================
@@ -786,6 +927,23 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
       details: { equipmentName: name, category, facility: facility.name }
     });
 
+    const adminEmails = await getCompanyAdminEmails(companyId);
+    if (adminEmails.length > 0) {
+      await sendEmail({
+        to: adminEmails,
+        subject: `New equipment registered: ${name}`,
+        html: `
+          <p>New equipment has been registered for ${facility.name}.</p>
+          <ul>
+            <li><strong>Name:</strong> ${name}</li>
+            <li><strong>Category:</strong> ${category}</li>
+            <li><strong>Facility:</strong> ${facility.name}</li>
+            <li><strong>Recorded by:</strong> ${userProfile.name}</li>
+          </ul>
+        `
+      });
+    }
+
     return c.json({ success: true, equipment });
   } catch (error) {
     console.log('Create equipment error:', error);
@@ -921,36 +1079,53 @@ app.post("/make-server-fc558f72/issues", async (c) => {
       return c.json({ error: 'Unauthorized' }, 401);
     }
 
-    const { equipmentId, description, priority, images, suggestedPriority } = await c.req.json();
+    const { equipmentId, title, description, priority, images, suggestedPriority, companyId, facilityId } = await c.req.json();
     
-    if (!equipmentId || !description) {
-      return c.json({ error: 'Equipment ID and description required' }, 400);
+    if (!description) {
+      return c.json({ error: 'Description required' }, 400);
     }
 
-    // Get equipment to assign contractor
-    const equipment = await kv.get(`equipment:${equipmentId}`);
-    if (!equipment) {
-      return c.json({ error: 'Equipment not found' }, 404);
+    let equipment = null;
+    let resolvedCompanyId = companyId;
+    let resolvedFacilityId = facilityId;
+    let equipmentName = title;
+    let assignedTo = null;
+
+    if (equipmentId) {
+      equipment = await kv.get(`equipment:${equipmentId}`);
+      if (!equipment) {
+        return c.json({ error: 'Equipment not found' }, 404);
+      }
+      resolvedCompanyId = equipment.companyId;
+      resolvedFacilityId = equipment.facilityId;
+      equipmentName = equipment.name;
+      assignedTo = equipment.contractorId || null;
+    }
+
+    if (!resolvedCompanyId || !resolvedFacilityId || !equipmentName) {
+      return c.json({ error: 'Company, facility, and title are required for non-equipment tasks' }, 400);
     }
 
     // Check company access
-    const binding = await checkCompanyAccess(user.id, equipment.companyId);
+    const binding = await checkCompanyAccess(user.id, resolvedCompanyId);
     if (!binding) {
-      return c.json({ error: 'No access to this equipment' }, 403);
+      return c.json({ error: 'No access to this company' }, 403);
     }
 
     const userProfile = await kv.get(`user:${user.id}`);
-    const facility = await kv.get(`facility:${equipment.facilityId}`);
+    const facility = await kv.get(`facility:${resolvedFacilityId}`);
 
     const issueId = generateId('ISS');
     const finalPriority = priority || suggestedPriority || 'medium';
     
     const issue = {
       id: issueId,
-      equipmentId,
-      equipmentName: equipment.name,
-      companyId: equipment.companyId,
-      facilityId: equipment.facilityId,
+      taskType: equipmentId ? 'equipment' : 'general',
+      title: equipmentId ? null : equipmentName,
+      equipmentId: equipmentId || null,
+      equipmentName,
+      companyId: resolvedCompanyId,
+      facilityId: resolvedFacilityId,
       description,
       priority: finalPriority,
       aiSuggestedPriority: suggestedPriority || null,
@@ -960,13 +1135,13 @@ app.post("/make-server-fc558f72/issues", async (c) => {
         userId: user.id,
         name: userProfile.name,
         role: binding.role,
-        branch: facility.name,
+        branch: facility?.name || '',
         contact: {
           phone: userProfile.phone || '',
           email: userProfile.email || '',
         }
       },
-      assignedTo: equipment.contractorId || null,
+      assignedTo,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       images: images || [],
@@ -975,13 +1150,15 @@ app.post("/make-server-fc558f72/issues", async (c) => {
 
     await kv.set(`issue:${issueId}`, issue);
 
-    // Update equipment health status based on priority
-    const healthStatus = finalPriority === 'high' ? 'red' : finalPriority === 'medium' ? 'yellow' : 'green';
-    await kv.set(`equipment:${equipmentId}`, {
-      ...equipment,
-      status: 'under_maintenance',
-      healthStatus
-    });
+    if (equipmentId && equipment) {
+      // Update equipment health status based on priority
+      const healthStatus = finalPriority === 'high' ? 'red' : finalPriority === 'medium' ? 'yellow' : 'green';
+      await kv.set(`equipment:${equipmentId}`, {
+        ...equipment,
+        status: 'under_maintenance',
+        healthStatus
+      });
+    }
 
     // Log activity
     await logActivity({
@@ -991,21 +1168,21 @@ app.post("/make-server-fc558f72/issues", async (c) => {
       userId: user.id,
       userName: userProfile.name,
       userRole: binding.role,
-      companyId: equipment.companyId,
-      details: { description, priority: finalPriority, equipmentName: equipment.name }
+      companyId: resolvedCompanyId,
+      details: { description, priority: finalPriority, equipmentName }
     });
 
     // Auto-assign if contractor exists
-    if (equipment.contractorId) {
+    if (assignedTo) {
       await kv.set(`issue:${issueId}`, { ...issue, status: 'assigned' });
       
       // Create notification for contractor
       const notificationId = generateId('NOT');
       await kv.set(`notification:${notificationId}`, {
         id: notificationId,
-        userId: equipment.contractorId,
-        companyId: equipment.companyId,
-        message: `New issue assigned: ${equipment.name} - ${description}`,
+        userId: assignedTo,
+        companyId: resolvedCompanyId,
+        message: `New issue assigned: ${equipmentName} - ${description}`,
         type: 'new_issue',
         issueId,
         priority: finalPriority,
@@ -1021,8 +1198,41 @@ app.post("/make-server-fc558f72/issues", async (c) => {
         userId: 'system',
         userName: 'System',
         userRole: 'system',
-        companyId: equipment.companyId,
-        details: { contractorId: equipment.contractorId }
+        companyId: resolvedCompanyId,
+        details: { contractorId: assignedTo }
+      });
+
+      const contractorEmail = await getUserEmail(assignedTo);
+      if (contractorEmail) {
+        await sendEmail({
+          to: contractorEmail,
+          subject: `New task assigned: ${equipmentName}`,
+          html: `
+            <p>You have been assigned a new task.</p>
+            <ul>
+              <li><strong>Task:</strong> ${equipmentName}</li>
+              <li><strong>Priority:</strong> ${finalPriority}</li>
+              <li><strong>Description:</strong> ${description}</li>
+            </ul>
+          `
+        });
+      }
+    }
+
+    const adminEmails = await getCompanyAdminEmails(resolvedCompanyId);
+    if (adminEmails.length > 0) {
+      await sendEmail({
+        to: adminEmails,
+        subject: `New issue reported: ${equipmentName}`,
+        html: `
+          <p>A new issue has been reported.</p>
+          <ul>
+            <li><strong>Task:</strong> ${equipmentName}</li>
+            <li><strong>Priority:</strong> ${finalPriority}</li>
+            <li><strong>Description:</strong> ${description}</li>
+            <li><strong>Reported by:</strong> ${userProfile.name}</li>
+          </ul>
+        `
       });
     }
 
@@ -1213,6 +1423,23 @@ app.put("/make-server-fc558f72/issues/:id", async (c) => {
       });
     }
 
+    if (status && ['approved', 'closed'].includes(status) && issue.assignedTo) {
+      const contractorEmail = await getUserEmail(issue.assignedTo);
+      if (contractorEmail) {
+        await sendEmail({
+          to: contractorEmail,
+          subject: `Issue ${status}: ${issue.equipmentName}`,
+          html: `
+            <p>The issue has been ${status}.</p>
+            <ul>
+              <li><strong>Task:</strong> ${issue.equipmentName}</li>
+              <li><strong>Status:</strong> ${status}</li>
+            </ul>
+          `
+        });
+      }
+    }
+
     return c.json({ success: true, issue: updatedIssue });
   } catch (error) {
     console.log('Update issue error:', error);
@@ -1244,6 +1471,13 @@ app.post("/make-server-fc558f72/issues/:id/assign", async (c) => {
 
     const userProfile = await kv.get(`user:${user.id}`);
 
+    if (['completed', 'approved', 'closed'].includes(issue.status)) {
+      return c.json({ error: 'Cannot reassign a completed or closed issue' }, 400);
+    }
+
+    const previousAssignee = issue.assignedTo || null;
+    const isReassign = previousAssignee && previousAssignee !== contractorId;
+
     const updatedIssue = {
       ...issue,
       assignedTo: contractorId,
@@ -1257,12 +1491,12 @@ app.post("/make-server-fc558f72/issues/:id/assign", async (c) => {
     await logActivity({
       entityType: 'issue',
       entityId: issueId,
-      action: 'contractor_assigned',
+      action: isReassign ? 'contractor_reassigned' : 'contractor_assigned',
       userId: user.id,
       userName: userProfile.name,
       userRole: binding.role,
       companyId: issue.companyId,
-      details: { contractorId }
+      details: { contractorId, previousAssignee }
     });
 
     // Notify contractor
@@ -1278,6 +1512,39 @@ app.post("/make-server-fc558f72/issues/:id/assign", async (c) => {
       read: false,
       timestamp: new Date().toISOString()
     });
+
+    const contractorEmail = await getUserEmail(contractorId);
+    if (contractorEmail) {
+      await sendEmail({
+        to: contractorEmail,
+        subject: `Task assigned: ${issue.equipmentName}`,
+        html: `
+          <p>You have been assigned a task.</p>
+          <ul>
+            <li><strong>Task:</strong> ${issue.equipmentName}</li>
+            <li><strong>Priority:</strong> ${issue.priority}</li>
+            <li><strong>Description:</strong> ${issue.description}</li>
+          </ul>
+        `
+      });
+    }
+
+    if (isReassign && previousAssignee) {
+      const previousEmail = await getUserEmail(previousAssignee);
+      if (previousEmail) {
+        await sendEmail({
+          to: previousEmail,
+          subject: `Task reassigned: ${issue.equipmentName}`,
+          html: `
+            <p>This task has been reassigned to another contractor.</p>
+            <ul>
+              <li><strong>Task:</strong> ${issue.equipmentName}</li>
+              <li><strong>Issue ID:</strong> ${issue.id}</li>
+            </ul>
+          `
+        });
+      }
+    }
 
     return c.json({ success: true, issue: updatedIssue });
   } catch (error) {
@@ -2124,7 +2391,7 @@ app.post("/make-server-fc558f72/issues/:id/respond", async (c) => {
     }
 
     const issueId = c.req.param('id');
-    const { decision, reason, proposedCost, proposal } = await c.req.json();
+    const { decision, reason, proposedCost, proposal, proposalAttachments } = await c.req.json();
 
     if (!decision || !['accepted', 'rejected'].includes(decision)) {
       return c.json({ error: 'Valid decision required (accepted or rejected)' }, 400);
@@ -2153,6 +2420,7 @@ app.post("/make-server-fc558f72/issues/:id/respond", async (c) => {
       reason: reason || '',
       proposedCost: proposedCost || 0,
       proposal: proposal || '',
+      proposalAttachments: proposalAttachments || [],
       respondedAt: new Date().toISOString()
     };
 
@@ -2193,6 +2461,23 @@ app.post("/make-server-fc558f72/issues/:id/respond", async (c) => {
         read: false,
         timestamp: new Date().toISOString()
       });
+
+      const reporterEmail = await getUserEmail(issue.reportedBy.userId);
+      if (reporterEmail) {
+        await sendEmail({
+          to: reporterEmail,
+          subject: `Job ${decision}: ${issue.equipmentName}`,
+          html: `
+            <p>Contractor ${userProfile.name} has ${decision} the job.</p>
+            <ul>
+              <li><strong>Task:</strong> ${issue.equipmentName}</li>
+              <li><strong>Decision:</strong> ${decision}</li>
+              <li><strong>Proposed cost:</strong> ${proposedCost || 0}</li>
+              ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
+            </ul>
+          `
+        });
+      }
     }
 
     return c.json({ success: true, response: jobResponse });
@@ -2211,7 +2496,7 @@ app.post("/make-server-fc558f72/issues/:id/complete", async (c) => {
     }
 
     const issueId = c.req.param('id');
-    const { executionReport, proofDocuments, finalCost, workPerformed, partsUsed } = await c.req.json();
+    const { executionReport, proofDocuments, finalCost, workPerformed, partsUsed, reportAttachments } = await c.req.json();
 
     if (!executionReport) {
       return c.json({ error: 'Execution report is required' }, 400);
@@ -2238,6 +2523,7 @@ app.post("/make-server-fc558f72/issues/:id/complete", async (c) => {
       contractorName: userProfile.name,
       executionReport,
       proofDocuments: proofDocuments || [],
+      reportAttachments: reportAttachments || [],
       finalCost: finalCost || 0,
       workPerformed: workPerformed || '',
       partsUsed: partsUsed || [],
@@ -2258,14 +2544,16 @@ app.post("/make-server-fc558f72/issues/:id/complete", async (c) => {
     await kv.set(`issue:${issueId}`, updatedIssue);
 
     // Update equipment status if completed
-    const equipment = await kv.get(`equipment:${issue.equipmentId}`);
-    if (equipment) {
-      await kv.set(`equipment:${issue.equipmentId}`, {
-        ...equipment,
-        status: 'active',
-        healthStatus: 'green',
-        lastMaintenance: new Date().toISOString()
-      });
+    if (issue.equipmentId) {
+      const equipment = await kv.get(`equipment:${issue.equipmentId}`);
+      if (equipment) {
+        await kv.set(`equipment:${issue.equipmentId}`, {
+          ...equipment,
+          status: 'active',
+          healthStatus: 'green',
+          lastMaintenance: new Date().toISOString()
+        });
+      }
     }
 
     // Log activity
@@ -2293,6 +2581,22 @@ app.post("/make-server-fc558f72/issues/:id/complete", async (c) => {
         read: false,
         timestamp: new Date().toISOString()
       });
+
+      const reporterEmail = await getUserEmail(issue.reportedBy.userId);
+      if (reporterEmail) {
+        await sendEmail({
+          to: reporterEmail,
+          subject: `Job completed: ${issue.equipmentName}`,
+          html: `
+            <p>Contractor ${userProfile.name} completed the job.</p>
+            <ul>
+              <li><strong>Task:</strong> ${issue.equipmentName}</li>
+              <li><strong>Final cost:</strong> ${finalCost || 0}</li>
+              <li><strong>Completion report:</strong> ${executionReport}</li>
+            </ul>
+          `
+        });
+      }
     }
 
     return c.json({ success: true, completion });

@@ -27,6 +27,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   const [issues, setIssues] = useState<any[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
+  const [jobAction, setJobAction] = useState<{ issue: any; action: 'respond' | 'complete' } | null>(null);
 
   useEffect(() => {
     if (companyId) {
@@ -34,17 +35,31 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
     }
   }, [companyId]);
 
+  useEffect(() => {
+    if (!companyId) return;
+    const interval = setInterval(() => loadDashboardData(), 30000);
+    const handleFocus = () => loadDashboardData();
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [companyId]);
+
   const loadDashboardData = async () => {
     try {
       const [statsRes, issuesRes, companyRes] = await Promise.all([
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/dashboard/stats?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies/${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         })
       ]);
 
@@ -301,10 +316,10 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleUpdateIssueStatus(issue.id, 'in_progress');
+                          setJobAction({ issue, action: 'respond' });
                         }}
                       >
-                        Start Work
+                        Review & Respond
                       </Button>
                     </div>
                   </CardContent>
@@ -370,7 +385,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleUpdateIssueStatus(issue.id, 'completed');
+                              setJobAction({ issue, action: 'complete' });
                             }}
                             className="flex-1"
                           >
@@ -548,10 +563,10 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
               <div className="flex gap-2">
                 {['created', 'assigned'].includes(selectedIssue.status) && (
                   <Button 
-                    onClick={() => handleUpdateIssueStatus(selectedIssue.id, 'in_progress')}
+                    onClick={() => setJobAction({ issue: selectedIssue, action: 'respond' })}
                     className="flex-1"
                   >
-                    Start Work
+                    Review & Respond
                   </Button>
                 )}
                 {selectedIssue.status === 'in_progress' && (
@@ -564,7 +579,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                       Awaiting Parts
                     </Button>
                     <Button 
-                      onClick={() => handleUpdateIssueStatus(selectedIssue.id, 'completed')}
+                      onClick={() => setJobAction({ issue: selectedIssue, action: 'complete' })}
                       className="flex-1"
                     >
                       Mark Complete
@@ -597,6 +612,20 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {jobAction && (
+        <JobActionModal
+          isOpen={!!jobAction}
+          onClose={() => setJobAction(null)}
+          job={jobAction.issue}
+          action={jobAction.action}
+          accessToken={accessToken}
+          onSuccess={() => {
+            setSelectedIssue(null);
+            loadDashboardData();
+          }}
+        />
       )}
     </div>
   );

@@ -19,12 +19,14 @@ interface JobActionModalProps {
 
 export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSuccess }: JobActionModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const jobLabel = job?.taskType === 'general' || !job?.equipmentId ? 'Task' : 'Equipment';
   
   // Response data
   const [decision, setDecision] = useState<'accepted' | 'rejected'>('accepted');
   const [reason, setReason] = useState('');
   const [proposedCost, setProposedCost] = useState('');
   const [proposal, setProposal] = useState('');
+  const [proposalFiles, setProposalFiles] = useState<File[]>([]);
   
   // Completion data
   const [executionReport, setExecutionReport] = useState('');
@@ -32,10 +34,40 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
   const [partsUsed, setPartsUsed] = useState('');
   const [finalCost, setFinalCost] = useState('');
   const [proofDocuments, setProofDocuments] = useState('');
+  const [reportFiles, setReportFiles] = useState<File[]>([]);
+
+  const uploadAttachments = async (kind: string, files: File[]) => {
+    if (!files.length) return [];
+    const attachments = [];
+
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('issueId', job.id);
+      formData.append('kind', kind);
+      formData.append('file', file);
+
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/uploads`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to upload attachment');
+      }
+      attachments.push(data.attachment);
+    }
+
+    return attachments;
+  };
 
   const handleRespond = async () => {
     setIsLoading(true);
     try {
+      const proposalAttachments = await uploadAttachments('proposal', proposalFiles);
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues/${job.id}/respond`, {
         method: 'POST',
         headers: {
@@ -46,7 +78,8 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
           decision,
           reason: decision === 'rejected' ? reason : undefined,
           proposedCost: proposedCost ? parseFloat(proposedCost) : 0,
-          proposal
+          proposal,
+          proposalAttachments
         })
       });
 
@@ -81,6 +114,7 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
         .map(part => part.trim())
         .filter(part => part.length > 0);
 
+      const reportAttachments = await uploadAttachments('report', reportFiles);
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues/${job.id}/complete`, {
         method: 'POST',
         headers: {
@@ -92,7 +126,8 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
           workPerformed,
           partsUsed: partsArray,
           finalCost: finalCost ? parseFloat(finalCost) : 0,
-          proofDocuments: proofDocuments.split(',').map(doc => doc.trim()).filter(doc => doc.length > 0)
+          proofDocuments: proofDocuments.split(',').map(doc => doc.trim()).filter(doc => doc.length > 0),
+          reportAttachments
         })
       });
 
@@ -126,7 +161,7 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
 
           <div className="space-y-4">
             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-              <p className="text-sm"><strong>Equipment:</strong> {job.equipmentName}</p>
+              <p className="text-sm"><strong>{jobLabel}:</strong> {job.equipmentName}</p>
               <p className="text-sm"><strong>Description:</strong> {job.description}</p>
               <p className="text-sm"><strong>Priority:</strong> <span className={`font-semibold ${job.priority === 'high' ? 'text-red-600' : job.priority === 'medium' ? 'text-yellow-600' : 'text-green-600'}`}>{job.priority}</span></p>
             </div>
@@ -191,6 +226,16 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
                     rows={4}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="proposal-files">Quote Attachments</Label>
+                  <Input
+                    id="proposal-files"
+                    type="file"
+                    multiple
+                    onChange={(e) => setProposalFiles(Array.from(e.target.files || []))}
+                  />
+                  <p className="text-xs text-gray-500">Attach quotes, diagrams, or supporting files.</p>
+                </div>
               </>
             )}
 
@@ -232,7 +277,7 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
 
         <div className="space-y-4">
           <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-            <p className="text-sm"><strong>Equipment:</strong> {job.equipmentName}</p>
+            <p className="text-sm"><strong>{jobLabel}:</strong> {job.equipmentName}</p>
             <p className="text-sm"><strong>Description:</strong> {job.description}</p>
           </div>
 
@@ -292,6 +337,16 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
               onChange={(e) => setProofDocuments(e.target.value)}
             />
             <p className="text-xs text-gray-500">Enter URLs to photos or documents as proof of completion</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="report-files">Report Attachments</Label>
+            <Input
+              id="report-files"
+              type="file"
+              multiple
+              onChange={(e) => setReportFiles(Array.from(e.target.files || []))}
+            />
+            <p className="text-xs text-gray-500">Attach completion photos, invoices, or documents.</p>
           </div>
 
           <div className="flex gap-3 pt-4">

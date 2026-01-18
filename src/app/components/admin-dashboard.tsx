@@ -64,29 +64,47 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     }
   }, [companyId]);
 
+  useEffect(() => {
+    if (!companyId) return;
+    const interval = setInterval(() => loadDashboardData(), 30000);
+    const handleFocus = () => loadDashboardData();
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [companyId]);
+
   const loadDashboardData = async () => {
     try {
       const [statsRes, companyRes, facilitiesRes, issuesRes, equipmentRes, usersRes, contractorsRes] = await Promise.all([
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/dashboard/stats?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies/${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/facilities?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/contractors?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
         })
       ]);
 
