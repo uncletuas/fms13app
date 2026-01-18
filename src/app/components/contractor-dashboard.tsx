@@ -9,6 +9,7 @@ import { ContactCard } from '@/app/components/contact-card';
 import { ActivityLog } from '@/app/components/activity-log';
 import { JobActionModal } from '@/app/components/job-action-modal';
 import { UserDetailModal } from '@/app/components/user-detail-modal';
+import { ProfileSettings } from '@/app/components/profile-settings';
 import { toast } from 'sonner';
 import { Wrench, Clock, CheckCircle, AlertCircle, LogOut, Building2, User, ClipboardCheck, FileCheck } from 'lucide-react';
 import { projectId } from '/utils/supabase/info';
@@ -20,14 +21,16 @@ interface ContractorDashboardProps {
   companyId: string;
   companyBindings: any[];
   onCompanyChange: (companyId: string) => void;
+  onProfileUpdate: (profile: any) => void;
 }
 
-export function ContractorDashboard({ user, accessToken, onLogout, companyId, companyBindings, onCompanyChange }: ContractorDashboardProps) {
+export function ContractorDashboard({ user, accessToken, onLogout, companyId, companyBindings, onCompanyChange, onProfileUpdate }: ContractorDashboardProps) {
   const [stats, setStats] = useState<any>(null);
   const [issues, setIssues] = useState<any[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [jobAction, setJobAction] = useState<{ issue: any; action: 'respond' | 'complete' } | null>(null);
+  const activeRole = companyBindings.find((binding) => binding.companyId === companyId)?.role || user?.role || 'contractor';
 
   useEffect(() => {
     if (companyId) {
@@ -264,6 +267,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             <TabsTrigger value="completed">
               Completed ({completedIssues.length})
             </TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
             {escalatedIssues.length > 0 && (
               <TabsTrigger value="escalated" className="text-red-600">
                 Escalated ({escalatedIssues.length})
@@ -520,6 +524,15 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
               ))}
             </TabsContent>
           )}
+
+          <TabsContent value="profile">
+            <ProfileSettings
+              user={user}
+              role={activeRole}
+              accessToken={accessToken}
+              onProfileUpdated={onProfileUpdate}
+            />
+          </TabsContent>
         </Tabs>
       </main>
 

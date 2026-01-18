@@ -1775,6 +1775,79 @@ app.get("/make-server-fc558f72/contractors", async (c) => {
   }
 });
 
+// Remove contractor from company (company admin)
+app.delete("/make-server-fc558f72/contractors/:contractorId", async (c) => {
+  try {
+    const { error, user } = await verifyUser(c.req.raw);
+    if (error || !user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const contractorId = c.req.param('contractorId');
+    const companyId = c.req.query('companyId');
+
+    if (!companyId) {
+      return c.json({ error: 'Company ID required' }, 400);
+    }
+
+    const binding = await checkCompanyAccess(user.id, companyId);
+    if (!binding || binding.role !== 'company_admin') {
+      return c.json({ error: 'Company admin access required' }, 403);
+    }
+
+    const contractorBinding = await kv.get(`user-company:${contractorId}:${companyId}`);
+    if (!contractorBinding || contractorBinding.role !== 'contractor') {
+      return c.json({ error: 'Contractor not found for this company' }, 404);
+    }
+
+    await kv.del(`user-company:${contractorId}:${companyId}`);
+
+    const allIssues = await kv.getByPrefix('issue:');
+    const assignedIssues = allIssues.filter((issue: any) => 
+      issue.companyId === companyId && issue.assignedTo === contractorId
+    );
+
+    for (const issue of assignedIssues) {
+      await kv.set(`issue:${issue.id}`, {
+        ...issue,
+        assignedTo: null,
+        status: issue.status === 'in_progress' ? 'created' : issue.status,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    const allEquipment = await kv.getByPrefix('equipment:');
+    const assignedEquipment = allEquipment.filter((eq: any) => 
+      eq.companyId === companyId && eq.contractorId === contractorId
+    );
+
+    for (const eq of assignedEquipment) {
+      await kv.set(`equipment:${eq.id}`, {
+        ...eq,
+        contractorId: null,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    const adminProfile = await kv.get(`user:${user.id}`);
+    await logActivity({
+      entityType: 'user',
+      entityId: contractorId,
+      action: 'contractor_removed',
+      userId: user.id,
+      userName: adminProfile?.name || 'Admin',
+      userRole: 'company_admin',
+      companyId,
+      details: { contractorId, reassignedIssues: assignedIssues.length, unassignedEquipment: assignedEquipment.length }
+    });
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.log('Remove contractor error:', error);
+    return c.json({ error: 'Failed to remove contractor' }, 500);
+  }
+});
+
 // Get all users for a company (company admin)
 app.get("/make-server-fc558f72/users", async (c) => {
   try {
@@ -1816,6 +1889,84 @@ app.get("/make-server-fc558f72/users", async (c) => {
   } catch (error) {
     console.log('Get users error:', error);
     return c.json({ error: 'Failed to get users' }, 500);
+  }
+});
+
+// Update user profile (company admin updates facility manager)
+app.put("/make-server-fc558f72/users/:id", async (c) => {
+  try {
+    const { error, user } = await verifyUser(c.req.raw);
+    if (error || !user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const userId = c.req.param('id');
+    const { companyId, name, phone, facilityIds, password } = await c.req.json();
+
+    if (!companyId) {
+      return c.json({ error: 'Company ID required' }, 400);
+    }
+
+    const adminBinding = await checkCompanyAccess(user.id, companyId);
+    if (!adminBinding || adminBinding.role !== 'company_admin') {
+      return c.json({ error: 'Company admin access required' }, 403);
+    }
+
+    const targetBinding = await kv.get(`user-company:${userId}:${companyId}`);
+    if (!targetBinding || targetBinding.role !== 'facility_manager') {
+      return c.json({ error: 'Facility manager not found for this company' }, 404);
+    }
+
+    const targetProfile = await kv.get(`user:${userId}`);
+    if (!targetProfile) {
+      return c.json({ error: 'User profile not found' }, 404);
+    }
+
+    const updatedProfile = {
+      ...targetProfile,
+      name: name || targetProfile.name,
+      phone: phone || targetProfile.phone,
+      updatedAt: new Date().toISOString()
+    };
+
+    await kv.set(`user:${userId}`, updatedProfile);
+
+    if (Array.isArray(facilityIds)) {
+      await kv.set(`user-company:${userId}:${companyId}`, {
+        ...targetBinding,
+        facilityIds
+      });
+    }
+
+    if (password) {
+      const supabaseAdmin = getSupabaseAdmin();
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
+      if (updateError) {
+        return c.json({ error: updateError.message }, 400);
+      }
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+    await supabaseAdmin.auth.admin.updateUserById(userId, {
+      user_metadata: { name: updatedProfile.name }
+    });
+
+    const adminProfile = await kv.get(`user:${user.id}`);
+    await logActivity({
+      entityType: 'user',
+      entityId: userId,
+      action: 'facility_manager_updated',
+      userId: user.id,
+      userName: adminProfile?.name || 'Admin',
+      userRole: 'company_admin',
+      companyId,
+      details: { name, phone, facilityIds }
+    });
+
+    return c.json({ success: true, user: updatedProfile });
+  } catch (error) {
+    console.log('Update user error:', error);
+    return c.json({ error: 'Failed to update user' }, 500);
   }
 });
 
@@ -2317,10 +2468,10 @@ app.post("/make-server-fc558f72/contractor-invitations/:id/respond", async (c) =
 });
 
 // ============================================
-// CONTRACTOR PROFILE ROUTES
+// PROFILE ROUTES
 // ============================================
 
-// Update contractor profile
+// Update profile (self)
 app.put("/make-server-fc558f72/profile", async (c) => {
   try {
     const { error, user } = await verifyUser(c.req.raw);
@@ -2328,24 +2479,35 @@ app.put("/make-server-fc558f72/profile", async (c) => {
       return c.json({ error: 'Unauthorized' }, 401);
     }
 
-    const { name, phone, skills, specialization } = await c.req.json();
+    const { name, phone, skills, specialization, avatarUrl, avatarPath } = await c.req.json();
 
     const userProfile = await kv.get(`user:${user.id}`);
     if (!userProfile) {
       return c.json({ error: 'User profile not found' }, 404);
     }
 
+    const nextSkills = skills ?? userProfile.skills ?? [];
+    const nextSpecialization = specialization ?? userProfile.specialization ?? '';
+    const isContractor = (userProfile.role || '') === 'contractor';
+
     const updatedProfile = {
       ...userProfile,
       name: name || userProfile.name,
       phone: phone || userProfile.phone,
-      skills: skills || userProfile.skills || [],
-      specialization: specialization || userProfile.specialization || '',
-      profileComplete: !!(skills && specialization),
+      skills: nextSkills,
+      specialization: nextSpecialization,
+      avatarUrl: avatarUrl || userProfile.avatarUrl || '',
+      avatarPath: avatarPath || userProfile.avatarPath || '',
+      profileComplete: isContractor ? !!(nextSkills.length && nextSpecialization) : userProfile.profileComplete,
       updatedAt: new Date().toISOString()
     };
 
     await kv.set(`user:${user.id}`, updatedProfile);
+
+    const supabaseAdmin = getSupabaseAdmin();
+    await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      user_metadata: { name: updatedProfile.name }
+    });
 
     // Log activity
     await logActivity({
@@ -2354,14 +2516,94 @@ app.put("/make-server-fc558f72/profile", async (c) => {
       action: 'profile_updated',
       userId: user.id,
       userName: updatedProfile.name,
-      userRole: 'contractor',
-      details: { skills, specialization, timestamp: new Date().toISOString() }
+      userRole: userProfile.role || 'user',
+      details: { skills: nextSkills, specialization: nextSpecialization, timestamp: new Date().toISOString() }
     });
 
     return c.json({ success: true, profile: updatedProfile });
   } catch (error) {
     console.log('Update profile error:', error);
     return c.json({ error: 'Failed to update profile' }, 500);
+  }
+});
+
+// Upload profile avatar
+app.post("/make-server-fc558f72/profile/avatar", async (c) => {
+  try {
+    const { error, user } = await verifyUser(c.req.raw);
+    if (error || !user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const formData = await c.req.formData();
+    const file = formData.get('file');
+
+    if (!(file instanceof File)) {
+      return c.json({ error: 'Avatar file is required' }, 400);
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+    await ensureAttachmentsBucket(supabaseAdmin);
+
+    const safeName = sanitizeFileName(file.name);
+    const path = `profiles/${user.id}/${Date.now()}-${safeName}`;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+
+    const { error: uploadError } = await supabaseAdmin
+      .storage
+      .from(ATTACHMENTS_BUCKET)
+      .upload(path, bytes, { contentType: file.type, upsert: true });
+
+    if (uploadError) {
+      console.log('Avatar upload error:', uploadError.message);
+      return c.json({ error: 'Failed to upload avatar' }, 500);
+    }
+
+    const { data: publicData } = supabaseAdmin.storage.from(ATTACHMENTS_BUCKET).getPublicUrl(path);
+    const userProfile = await kv.get(`user:${user.id}`);
+
+    const updatedProfile = {
+      ...userProfile,
+      avatarUrl: publicData.publicUrl,
+      avatarPath: path,
+      updatedAt: new Date().toISOString()
+    };
+
+    await kv.set(`user:${user.id}`, updatedProfile);
+
+    return c.json({ success: true, profile: updatedProfile });
+  } catch (error) {
+    console.log('Upload avatar error:', error);
+    return c.json({ error: 'Failed to upload avatar' }, 500);
+  }
+});
+
+// Update password (self)
+app.post("/make-server-fc558f72/profile/password", async (c) => {
+  try {
+    const { error, user } = await verifyUser(c.req.raw);
+    if (error || !user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const { newPassword } = await c.req.json();
+    if (!newPassword || newPassword.length < 6) {
+      return c.json({ error: 'Password must be at least 6 characters' }, 400);
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      password: newPassword
+    });
+
+    if (updateError) {
+      return c.json({ error: updateError.message }, 400);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.log('Update password error:', error);
+    return c.json({ error: 'Failed to update password' }, 500);
   }
 });
 

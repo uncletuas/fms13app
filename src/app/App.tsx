@@ -125,6 +125,11 @@ export default function App() {
     }
   };
 
+  const handleProfileUpdate = (updatedProfile: any) => {
+    setUser(updatedProfile);
+    persistProfile(updatedProfile, companyBindings);
+  };
+
   const handleLogout = () => {
     supabase.auth.signOut();
     setUser(null);
@@ -230,6 +235,7 @@ export default function App() {
           companyId={selectedCompany!}
           companyBindings={effectiveBindings}
           onCompanyChange={handleCompanyChange}
+          onProfileUpdate={handleProfileUpdate}
         />
       )}
       {currentRole === 'facility_manager' && (
@@ -240,6 +246,7 @@ export default function App() {
           companyId={selectedCompany!}
           companyBindings={effectiveBindings}
           onCompanyChange={handleCompanyChange}
+          onProfileUpdate={handleProfileUpdate}
         />
       )}
       {currentRole === 'contractor' && (
@@ -250,6 +257,7 @@ export default function App() {
           companyId={selectedCompany!}
           companyBindings={effectiveBindings}
           onCompanyChange={handleCompanyChange}
+          onProfileUpdate={handleProfileUpdate}
         />
       )}
       <Toaster />

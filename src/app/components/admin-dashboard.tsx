@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ContactCard } from '@/app/components/contact-card';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { ActivityLog } from '@/app/components/activity-log';
+import { ProfileSettings } from '@/app/components/profile-settings';
 import { toast } from 'sonner';
 import { Building2, Package, AlertCircle, Users, LogOut, Plus, UserPlus, Settings } from 'lucide-react';
 import { projectId } from '/utils/supabase/info';
@@ -21,9 +22,10 @@ interface AdminDashboardProps {
   companyId: string;
   companyBindings: any[];
   onCompanyChange: (companyId: string) => void;
+  onProfileUpdate: (profile: any) => void;
 }
 
-export function AdminDashboard({ user, accessToken, onLogout, companyId, companyBindings, onCompanyChange }: AdminDashboardProps) {
+export function AdminDashboard({ user, accessToken, onLogout, companyId, companyBindings, onCompanyChange, onProfileUpdate }: AdminDashboardProps) {
   const [stats, setStats] = useState<any>(null);
   const [facilities, setFacilities] = useState<any[]>([]);
   const [issues, setIssues] = useState<any[]>([]);
@@ -35,8 +37,10 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const [isCreateFacilityOpen, setIsCreateFacilityOpen] = useState(false);
   const [isCreateFMOpen, setIsCreateFMOpen] = useState(false);
   const [isAssignContractorOpen, setIsAssignContractorOpen] = useState(false);
+  const [isEditFMOpen, setIsEditFMOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
+  const [selectedFM, setSelectedFM] = useState<any>(null);
   
   const [facilityData, setFacilityData] = useState({ 
     name: '', 
@@ -51,6 +55,13 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     name: '',
     phone: '',
     facilityIds: [] as string[]
+  });
+
+  const [fmEditData, setFmEditData] = useState({
+    name: '',
+    phone: '',
+    facilityIds: [] as string[],
+    password: ''
   });
 
   const [contractorAssignment, setContractorAssignment] = useState({
@@ -195,8 +206,99 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     }
   };
 
+  const openEditFacilityManager = (manager: any) => {
+    setSelectedFM(manager);
+    setFmEditData({
+      name: manager.name || '',
+      phone: manager.phone || '',
+      facilityIds: manager.facilityIds || [],
+      password: ''
+    });
+    setIsEditFMOpen(true);
+  };
+
+  const handleUpdateFacilityManager = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedFM) return;
+    if (fmEditData.facilityIds.length === 0) {
+      toast.error('Select at least one facility for this manager');
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users/${selectedFM.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          companyId,
+          name: fmEditData.name,
+          phone: fmEditData.phone,
+          facilityIds: fmEditData.facilityIds,
+          password: fmEditData.password || undefined
+        })
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        toast.error(data.error || 'Failed to update facility manager');
+        return;
+      }
+
+      toast.success('Facility manager updated');
+      setIsEditFMOpen(false);
+      setSelectedFM(null);
+      setFmEditData({ name: '', phone: '', facilityIds: [], password: '' });
+      loadDashboardData();
+    } catch (error) {
+      console.error('Update FM error:', error);
+      toast.error('Failed to update facility manager');
+    }
+  };
+
+  const handleRemoveContractor = async (contractorId: string) => {
+    const confirmRemove = window.confirm('Remove this contractor from your company?');
+    if (!confirmRemove) return;
+
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/contractors/${contractorId}?companyId=${companyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        toast.error(data.error || 'Failed to remove contractor');
+        return;
+      }
+
+      toast.success('Contractor removed');
+      loadDashboardData();
+    } catch (error) {
+      console.error('Remove contractor error:', error);
+      toast.error('Failed to remove contractor');
+    }
+  };
+
   const toggleFacilityAssignment = (facilityId: string) => {
     setFmData((prev) => {
+      const isSelected = prev.facilityIds.includes(facilityId);
+      return {
+        ...prev,
+        facilityIds: isSelected
+          ? prev.facilityIds.filter((id) => id !== facilityId)
+          : [...prev.facilityIds, facilityId]
+      };
+    });
+  };
+
+  const toggleEditFacilityAssignment = (facilityId: string) => {
+    setFmEditData((prev) => {
       const isSelected = prev.facilityIds.includes(facilityId);
       return {
         ...prev,
@@ -355,6 +457,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             <TabsTrigger value="equipment">Equipment</TabsTrigger>
             <TabsTrigger value="issues">Issues</TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -724,13 +827,16 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                 <CardContent>
                   <div className="space-y-3">
                     {companyUsers.filter(u => u.role === 'facility_manager').map((fm) => (
-                      <div key={fm.id} className="border rounded-lg p-3">
+                      <div key={fm.id} className="border rounded-lg p-3 space-y-3">
                         <ContactCard 
                           name={fm.name}
                           role={fm.role}
                           contact={{ phone: fm.phone, email: fm.email }}
                           compact
                         />
+                        <Button size="sm" variant="outline" onClick={() => openEditFacilityManager(fm)}>
+                          Edit Profile
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -781,13 +887,16 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       <p className="text-sm text-gray-500 text-center py-4">No contractors assigned</p>
                     ) : (
                       contractors.map((contractor) => (
-                        <div key={contractor.id} className="border rounded-lg p-3">
+                        <div key={contractor.id} className="border rounded-lg p-3 space-y-3">
                           <ContactCard 
                             name={contractor.name}
                             role="contractor"
                             contact={{ phone: contractor.phone, email: contractor.email }}
                             compact
                           />
+                          <Button size="sm" variant="destructive" onClick={() => handleRemoveContractor(contractor.id)}>
+                            Remove Contractor
+                          </Button>
                         </div>
                       ))
                     )}
@@ -796,8 +905,85 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
               </Card>
             </div>
           </TabsContent>
+
+          <TabsContent value="profile">
+            <ProfileSettings
+              user={user}
+              role="company_admin"
+              accessToken={accessToken}
+              onProfileUpdated={onProfileUpdate}
+            />
+          </TabsContent>
         </Tabs>
       </main>
+
+      {selectedFM && (
+        <Dialog open={isEditFMOpen} onOpenChange={(open) => {
+          setIsEditFMOpen(open);
+          if (!open) {
+            setSelectedFM(null);
+          }
+        }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Facility Manager</DialogTitle>
+              <DialogDescription>Update profile details, facilities, or reset password.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateFacilityManager} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fm-edit-name">Full Name</Label>
+                <Input
+                  id="fm-edit-name"
+                  value={fmEditData.name}
+                  onChange={(e) => setFmEditData({ ...fmEditData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fm-edit-email">Email</Label>
+                <Input id="fm-edit-email" value={selectedFM.email || ''} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fm-edit-phone">Phone</Label>
+                <Input
+                  id="fm-edit-phone"
+                  value={fmEditData.phone}
+                  onChange={(e) => setFmEditData({ ...fmEditData, phone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Assigned Facilities</Label>
+                {facilities.length === 0 ? (
+                  <p className="text-xs text-gray-500">Create a facility before assigning a manager.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {facilities.map((facility) => (
+                      <label key={facility.id} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={fmEditData.facilityIds.includes(facility.id)}
+                          onCheckedChange={() => toggleEditFacilityAssignment(facility.id)}
+                        />
+                        <span>{facility.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fm-edit-password">New Password (optional)</Label>
+                <Input
+                  id="fm-edit-password"
+                  type="password"
+                  value={fmEditData.password}
+                  onChange={(e) => setFmEditData({ ...fmEditData, password: e.target.value })}
+                  minLength={6}
+                />
+              </div>
+              <Button type="submit" className="w-full">Save Changes</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Issue Detail Dialog */}
       {selectedIssue && (

@@ -10,6 +10,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ContactCard } from '@/app/components/contact-card';
 import { ActivityLog } from '@/app/components/activity-log';
+import { ProfileSettings } from '@/app/components/profile-settings';
 import { toast } from 'sonner';
 import { Package, AlertCircle, LogOut, Plus, CheckCircle } from 'lucide-react';
 import { projectId } from '/utils/supabase/info';
@@ -21,14 +22,16 @@ interface FacilityManagerDashboardProps {
   companyId: string;
   companyBindings: any[];
   onCompanyChange: (companyId: string) => void;
+  onProfileUpdate: (profile: any) => void;
 }
 
-export function FacilityManagerDashboard({ user, accessToken, onLogout, companyId, companyBindings, onCompanyChange }: FacilityManagerDashboardProps) {
+export function FacilityManagerDashboard({ user, accessToken, onLogout, companyId, companyBindings, onCompanyChange, onProfileUpdate }: FacilityManagerDashboardProps) {
   const [stats, setStats] = useState<any>(null);
   const [equipment, setEquipment] = useState<any[]>([]);
   const [issues, setIssues] = useState<any[]>([]);
   const [contractors, setContractors] = useState<any[]>([]);
   const [facilities, setFacilities] = useState<any[]>([]);
+  const activeRole = companyBindings.find((binding) => binding.companyId === companyId)?.role || user?.role || 'facility_manager';
   
   const [isCreateEquipmentOpen, setIsCreateEquipmentOpen] = useState(false);
   const [isCreateIssueOpen, setIsCreateIssueOpen] = useState(false);
@@ -411,6 +414,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             <TabsTrigger value="issues">Issues</TabsTrigger>
             <TabsTrigger value="equipment">Equipment</TabsTrigger>
             <TabsTrigger value="contractors">Contractors</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="issues" className="space-y-4">
@@ -822,6 +826,15 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="profile">
+            <ProfileSettings
+              user={user}
+              role={activeRole}
+              accessToken={accessToken}
+              onProfileUpdated={onProfileUpdate}
+            />
           </TabsContent>
         </Tabs>
       </main>
