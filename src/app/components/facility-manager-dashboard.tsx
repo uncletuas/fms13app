@@ -317,6 +317,8 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     );
   };
 
+  const totalEquipmentCount = Math.max(stats?.totalEquipment || 0, equipment.length);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -359,7 +361,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
               <Package className="w-4 h-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalEquipment || 0}</div>
+              <div className="text-2xl font-bold">{totalEquipmentCount}</div>
               <div className="text-xs text-gray-500 mt-1">
                 <span className="text-green-600">●</span> {stats?.healthyEquipment || 0} Healthy
                 <span className="text-yellow-600 ml-2">●</span> {stats?.concerningEquipment || 0} Warning

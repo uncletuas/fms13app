@@ -8,6 +8,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { ContactCard } from '@/app/components/contact-card';
+import { Checkbox } from '@/app/components/ui/checkbox';
 import { ActivityLog } from '@/app/components/activity-log';
 import { toast } from 'sonner';
 import { Building2, Package, AlertCircle, Users, LogOut, Plus, UserPlus, Settings } from 'lucide-react';
@@ -164,6 +165,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     e.preventDefault();
     
     try {
+      if (fmData.facilityIds.length === 0) {
+        toast.error('Select at least one facility for this manager');
+        return;
+      }
+
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users/facility-manager`, {
         method: 'POST',
         headers: {
@@ -187,6 +193,18 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
       console.error('Create FM error:', error);
       toast.error('Failed to create Facility Manager');
     }
+  };
+
+  const toggleFacilityAssignment = (facilityId: string) => {
+    setFmData((prev) => {
+      const isSelected = prev.facilityIds.includes(facilityId);
+      return {
+        ...prev,
+        facilityIds: isSelected
+          ? prev.facilityIds.filter((id) => id !== facilityId)
+          : [...prev.facilityIds, facilityId]
+      };
+    });
   };
 
   const handleAssignContractor = async (e: React.FormEvent) => {
@@ -667,6 +685,24 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                               value={fmData.phone}
                               onChange={(e) => setFmData({ ...fmData, phone: e.target.value })}
                             />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Assigned Facilities</Label>
+                            {facilities.length === 0 ? (
+                              <p className="text-xs text-gray-500">Create a facility before assigning a manager.</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {facilities.map((facility) => (
+                                  <label key={facility.id} className="flex items-center gap-2 text-sm">
+                                    <Checkbox
+                                      checked={fmData.facilityIds.includes(facility.id)}
+                                      onCheckedChange={() => toggleFacilityAssignment(facility.id)}
+                                    />
+                                    <span>{facility.name}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="fm-password">Password</Label>

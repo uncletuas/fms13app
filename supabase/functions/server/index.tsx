@@ -105,18 +105,24 @@ const sanitizeFileName = (name: string) => {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_');
 };
 
-const sendEmail = async (params: { to: string | string[]; subject: string; html: string }) => {
+const stripHtml = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+const sendEmail = async (params: { to: string | string[]; subject: string; html: string; text?: string }) => {
   if (!RESEND_API_KEY) {
     console.log('Resend API key not configured; skipping email.');
     return;
   }
 
   const toList = Array.isArray(params.to) ? params.to : [params.to];
+  if (toList.length === 0) {
+    return;
+  }
   const payload = {
     from: RESEND_FROM,
     to: toList,
     subject: params.subject,
     html: params.html,
+    text: params.text || stripHtml(params.html),
   };
 
   const response = await fetch('https://api.resend.com/emails', {
@@ -1957,15 +1963,18 @@ app.get("/make-server-fc558f72/dashboard/stats", async (c) => {
       };
     } else if (binding.role === 'facility_manager') {
       const managerFacilityIds = binding.facilityIds || [];
+      const effectiveFacilityIds = managerFacilityIds.length
+        ? managerFacilityIds
+        : companyFacilities.map((facility: any) => facility.id);
       const facilityEquipment = companyEquipment.filter((e: any) => 
-        managerFacilityIds.includes(e.facilityId)
+        effectiveFacilityIds.includes(e.facilityId)
       );
       const facilityIssues = companyIssues.filter((i: any) => 
-        managerFacilityIds.includes(i.facilityId)
+        effectiveFacilityIds.includes(i.facilityId)
       );
 
       stats = {
-        totalFacilities: managerFacilityIds.length,
+        totalFacilities: effectiveFacilityIds.length,
         totalEquipment: facilityEquipment.length,
         totalIssues: facilityIssues.length,
         openIssues: facilityIssues.filter((i: any) => 
