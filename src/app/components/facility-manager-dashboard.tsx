@@ -55,7 +55,6 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   });
 
   const [issueUpdateData, setIssueUpdateData] = useState({
-    status: '',
     feedback: '',
     rating: 0
   });
@@ -176,7 +175,8 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
         },
         body: JSON.stringify({
           status: 'approved',
-          ...issueUpdateData
+          feedback: issueUpdateData.feedback,
+          rating: issueUpdateData.rating
         })
       });
 
@@ -185,7 +185,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
       if (data.success) {
         toast.success('Issue approved successfully');
         setSelectedIssue(null);
-        setIssueUpdateData({ status: '', feedback: '', rating: 0 });
+        setIssueUpdateData({ feedback: '', rating: 0 });
         loadDashboardData();
       } else {
         toast.error(data.error || 'Failed to approve issue');
