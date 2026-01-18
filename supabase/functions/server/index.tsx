@@ -26,7 +26,7 @@ const getSupabaseAuthClient = () => {
 };
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
-const RESEND_FROM = Deno.env.get('RESEND_FROM') ?? 'FMS13 <onboarding@resend.dev>';
+const RESEND_FROM = Deno.env.get('RESEND_FROM') ?? 'FMS13 <onboarding@updates.opaltechservices.com>';
 const ATTACHMENTS_BUCKET = Deno.env.get('ATTACHMENTS_BUCKET')
   ?? Deno.env.get('SUPABASE_ATTACHMENTS_BUCKET')
   ?? 'fms13-attachments';
