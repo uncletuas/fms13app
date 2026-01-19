@@ -8,11 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/ta
 import { ContactCard } from '@/app/components/contact-card';
 import { ActivityLog } from '@/app/components/activity-log';
 import { JobActionModal } from '@/app/components/job-action-modal';
-import { UserDetailModal } from '@/app/components/user-detail-modal';
 import { ProfileSettings } from '@/app/components/profile-settings';
-import { ContractorInvitationsPanel } from '@/app/components/contractor-invitations-panel';
+import { NotificationsPanel } from '@/app/components/notifications-panel';
 import { toast } from 'sonner';
-import { Wrench, Clock, CheckCircle, AlertCircle, LogOut, Building2, User, ClipboardCheck, FileCheck } from 'lucide-react';
+import { Wrench, Clock, CheckCircle, AlertCircle, LogOut, Building2 } from 'lucide-react';
 import { projectId } from '/utils/supabase/info';
 
 interface ContractorDashboardProps {
@@ -193,15 +192,6 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   const completedIssues = sortedIssues.filter(i => ['completed', 'approved', 'closed'].includes(i.status));
   const escalatedIssues = sortedIssues.filter(i => i.status === 'escalated');
 
-  const companyCards = companyBindings.map((binding) => {
-    const details = companyDirectory[binding.companyId];
-    return {
-      id: binding.companyId,
-      name: details?.name || binding.companyId,
-      role: binding.role
-    };
-  });
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -239,58 +229,6 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
 
       {/* Main Content */}
       <main className="p-6 space-y-6">
-        <div className="grid gap-6 lg:grid-cols-[1.4fr,0.6fr]">
-          <Card className="border-slate-200 bg-white">
-            <CardHeader>
-              <CardTitle>Your Companies</CardTitle>
-              <CardDescription>Select a company to view its jobs and requests.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {companyCards.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                  No company assignments yet. Share your Contractor ID to receive invitations.
-                </div>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {companyCards.map((card) => {
-                    const isActive = card.id === companyId;
-                    return (
-                      <button
-                        key={card.id}
-                        type="button"
-                        onClick={() => onCompanyChange(card.id)}
-                        className={`rounded-lg border p-4 text-left transition ${
-                          isActive
-                            ? 'border-slate-900 bg-slate-900 text-white'
-                            : 'border-slate-200 bg-white hover:border-slate-400'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-semibold">{card.name}</p>
-                            <p className={`text-xs ${isActive ? 'text-white/70' : 'text-slate-500'}`}>{card.id}</p>
-                          </div>
-                          <Badge className={isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}>
-                            {card.role.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        {isActive && (
-                          <p className="mt-3 text-xs text-white/80">Active company</p>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <ContractorInvitationsPanel
-            accessToken={accessToken}
-            onInvitationHandled={onInvitationHandled}
-          />
-        </div>
-
         {/* Stats Grid */}
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 ${companyId ? 'mb-6' : ''}`}>
           <Card>
@@ -379,6 +317,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             <TabsTrigger value="completed">
               Completed ({completedIssues.length})
             </TabsTrigger>
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
             {escalatedIssues.length > 0 && (
               <TabsTrigger value="escalated" className="text-red-600">
@@ -636,6 +575,13 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
               ))}
             </TabsContent>
           )}
+
+          <TabsContent value="notifications">
+            <NotificationsPanel
+              accessToken={accessToken}
+              onInvitationHandled={onInvitationHandled}
+            />
+          </TabsContent>
 
           <TabsContent value="profile">
             <ProfileSettings

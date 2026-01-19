@@ -162,6 +162,36 @@ const getCompanyAdminEmails = async (companyId: string) => {
   return emails.filter((email: string | null) => email);
 };
 
+const buildInvitationEmail = (params: {
+  companyName: string;
+  invitedByName?: string;
+  categories?: string[];
+  facilityIds?: string[];
+}) => {
+  const facilityLine = params.facilityIds && params.facilityIds.length
+    ? `<li><strong>Facilities:</strong> ${params.facilityIds.join(', ')}</li>`
+    : '';
+  const categoryLine = params.categories && params.categories.length
+    ? `<li><strong>Scope:</strong> ${params.categories.join(', ')}</li>`
+    : '';
+
+  return {
+    subject: `Invitation to join ${params.companyName} on FMS13`,
+    html: `
+      <p>You have been invited to join ${params.companyName} as a contractor.</p>
+      <p><strong>Invited by:</strong> ${params.invitedByName || 'Company admin'}</p>
+      ${facilityLine || categoryLine ? `<ul>${facilityLine}${categoryLine}</ul>` : ''}
+      <p>Next steps:</p>
+      <ol>
+        <li>Sign in to your FMS13 account.</li>
+        <li>Open the Notifications page.</li>
+        <li>Review the invitation and choose Accept or Decline.</li>
+      </ol>
+      <p>Accepting the invitation adds the company to your switcher.</p>
+    `
+  };
+};
+
 const ensureAttachmentsBucket = async (supabaseAdmin: ReturnType<typeof createClient>) => {
   const { data, error } = await supabaseAdmin.storage.getBucket(ATTACHMENTS_BUCKET);
   if (!data && error) {
@@ -1711,6 +1741,21 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
       details: { invitationId, contractorName: contractorProfile.name }
     });
 
+    const contractorEmail = await getUserEmail(contractorId);
+    if (contractorEmail) {
+      const invitationEmail = buildInvitationEmail({
+        companyName: company.name,
+        invitedByName: userProfile.name,
+        categories,
+        facilityIds
+      });
+      await sendEmail({
+        to: contractorEmail,
+        subject: invitationEmail.subject,
+        html: invitationEmail.html
+      });
+    }
+
     return c.json({ success: true, message: 'Invitation sent to contractor', invitation });
   } catch (error) {
     console.log('Assign contractor error:', error);
@@ -2334,6 +2379,21 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
       companyId,
       details: { invitationId, contractorName: contractorProfile.name }
     });
+
+    const contractorEmail = await getUserEmail(contractorId);
+    if (contractorEmail) {
+      const invitationEmail = buildInvitationEmail({
+        companyName: company.name,
+        invitedByName: userProfile.name,
+        categories,
+        facilityIds
+      });
+      await sendEmail({
+        to: contractorEmail,
+        subject: invitationEmail.subject,
+        html: invitationEmail.html
+      });
+    }
 
     return c.json({ success: true, invitation });
   } catch (error) {
