@@ -4,7 +4,6 @@ import { AdminDashboard } from '@/app/components/admin-dashboard';
 import { FacilityManagerDashboard } from '@/app/components/facility-manager-dashboard';
 import { ContractorDashboard } from '@/app/components/contractor-dashboard';
 import { CompanySelector } from '@/app/components/company-selector';
-import { ContractorInvitations } from '@/app/components/contractor-invitations';
 import { Toaster } from '@/app/components/ui/sonner';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -58,6 +57,8 @@ export default function App() {
         } else if (data.companyBindings?.length > 0) {
           setSelectedCompany(data.companyBindings[0].companyId);
           setCurrentRole(data.companyBindings[0].role);
+        } else if (data.user?.role === 'contractor') {
+          setCurrentRole('contractor');
         }
         return;
       }
@@ -122,6 +123,8 @@ export default function App() {
       setSelectedCompany(bindings[0].companyId);
       setCurrentRole(bindings[0].role);
       localStorage.setItem('selectedCompanyId', bindings[0].companyId);
+    } else if (userData?.role === 'contractor') {
+      setCurrentRole('contractor');
     }
   };
 
@@ -172,8 +175,8 @@ export default function App() {
     );
   }
 
-  // Multi-company users need to select a company
-  if (effectiveBindings.length > 1 && !selectedCompany) {
+  // Multi-company users need to select a company (skip for contractors who can switch in-dashboard)
+  if (effectiveBindings.length > 1 && !selectedCompany && currentRole !== 'contractor') {
     return (
       <>
         <CompanySelector 
@@ -192,10 +195,14 @@ export default function App() {
     if (user?.role === 'contractor') {
       return (
         <>
-          <ContractorInvitations
-            user={user}
-            accessToken={accessToken}
+          <ContractorDashboard 
+            user={user} 
+            accessToken={accessToken} 
             onLogout={handleLogout}
+            companyId={selectedCompany}
+            companyBindings={effectiveBindings}
+            onCompanyChange={handleCompanyChange}
+            onProfileUpdate={handleProfileUpdate}
             onInvitationHandled={() => bootstrapSession(accessToken)}
           />
           <Toaster />
@@ -254,10 +261,11 @@ export default function App() {
           user={user} 
           accessToken={accessToken} 
           onLogout={handleLogout}
-          companyId={selectedCompany!}
+          companyId={selectedCompany}
           companyBindings={effectiveBindings}
           onCompanyChange={handleCompanyChange}
           onProfileUpdate={handleProfileUpdate}
+          onInvitationHandled={() => bootstrapSession(accessToken)}
         />
       )}
       <Toaster />
