@@ -21,6 +21,7 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
   const [isSaving, setIsSaving] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const isFacilityManager = role === 'facility_manager';
 
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -187,6 +188,7 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Full name"
+              disabled={isFacilityManager}
             />
           </div>
 
@@ -202,6 +204,7 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+234 xxx xxx xxxx"
+              disabled={isFacilityManager}
             />
           </div>
 
@@ -214,6 +217,7 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
                   value={specialization}
                   onChange={(e) => setSpecialization(e.target.value)}
                   placeholder="Commercial kitchen equipment"
+                  disabled={isFacilityManager}
                 />
               </div>
               <div className="space-y-2">
@@ -224,14 +228,17 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
                   onChange={(e) => setSkills(e.target.value)}
                   placeholder="Plumbing, Electrical, HVAC"
                   rows={3}
+                  disabled={isFacilityManager}
                 />
               </div>
             </>
           )}
 
-          <Button onClick={handleProfileSave} disabled={isSaving} className="w-full">
-            {isSaving ? 'Saving...' : 'Save Profile'}
-          </Button>
+          {!isFacilityManager && (
+            <Button onClick={handleProfileSave} disabled={isSaving} className="w-full">
+              {isSaving ? 'Saving...' : 'Save Profile'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -254,38 +261,40 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
           </Card>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              Password Settings
-            </CardTitle>
-            <CardDescription>Change your password from here.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="new-password">New password</Label>
-              <Input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm password</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
-            <Button variant="outline" onClick={handlePasswordChange} disabled={isSaving} className="w-full">
-              Update Password
-            </Button>
-          </CardContent>
-        </Card>
+        {!isFacilityManager && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Password Settings
+              </CardTitle>
+              <CardDescription>Change your password from here.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              <Button variant="outline" onClick={handlePasswordChange} disabled={isSaving} className="w-full">
+                Update Password
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <div className="flex items-center justify-between">

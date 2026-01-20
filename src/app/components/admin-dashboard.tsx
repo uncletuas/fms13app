@@ -61,12 +61,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const [facilityEndDate, setFacilityEndDate] = useState('');
 
   const [managerSearch, setManagerSearch] = useState('');
-  const [managerStartDate, setManagerStartDate] = useState('');
-  const [managerEndDate, setManagerEndDate] = useState('');
-
   const [contractorSearch, setContractorSearch] = useState('');
-  const [contractorStartDate, setContractorStartDate] = useState('');
-  const [contractorEndDate, setContractorEndDate] = useState('');
   
   const [facilityData, setFacilityData] = useState({ 
     name: '', 
@@ -428,16 +423,14 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     .filter((fm) => {
       const matchesQuery = !managerQuery
         || `${fm.name} ${fm.email || ''} ${fm.phone || ''}`.toLowerCase().includes(managerQuery);
-      const matchesDate = inDateRange(fm.createdAt, managerStartDate, managerEndDate);
-      return matchesQuery && matchesDate;
+      return matchesQuery;
     });
 
   const contractorQuery = contractorSearch.trim().toLowerCase();
   const filteredContractors = contractors.filter((contractor) => {
     const matchesQuery = !contractorQuery
       || `${contractor.name} ${contractor.email || ''} ${contractor.phone || ''}`.toLowerCase().includes(contractorQuery);
-    const matchesDate = inDateRange(contractor.createdAt, contractorStartDate, contractorEndDate);
-    return matchesQuery && matchesDate;
+    return matchesQuery;
   });
   const avatarUrl = user?.avatarUrl || user?.avatar_url || user?.profile?.avatarUrl;
   const initials = (user?.name || 'User')
@@ -1213,24 +1206,6 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                         className="h-8"
                       />
                     </div>
-                    <div>
-                      <Label className="text-xs text-slate-500">From</Label>
-                      <Input
-                        type="date"
-                        value={managerStartDate}
-                        onChange={(e) => setManagerStartDate(e.target.value)}
-                        className="h-8"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-slate-500">To</Label>
-                      <Input
-                        type="date"
-                        value={managerEndDate}
-                        onChange={(e) => setManagerEndDate(e.target.value)}
-                        className="h-8"
-                      />
-                    </div>
                     <Button
                       variant="outline"
                       className="h-8"
@@ -1258,8 +1233,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                           { label: 'Phone', value: (row: any) => row.phone || '-' },
                           { label: 'Facilities', value: (row: any) => row.facilityIds?.length || 0 },
                         ] as ExportColumn<any>[],
-                        filteredManagers,
-                        `${managerStartDate || 'All'} to ${managerEndDate || 'All'}`
+                        filteredManagers
                       )}
                     >
                       Print PDF
@@ -1359,24 +1333,6 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                           className="h-8"
                         />
                       </div>
-                      <div>
-                        <Label className="text-xs text-slate-500">From</Label>
-                        <Input
-                          type="date"
-                          value={contractorStartDate}
-                          onChange={(e) => setContractorStartDate(e.target.value)}
-                          className="h-8"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-slate-500">To</Label>
-                        <Input
-                          type="date"
-                          value={contractorEndDate}
-                          onChange={(e) => setContractorEndDate(e.target.value)}
-                          className="h-8"
-                        />
-                      </div>
                       <Button
                         variant="outline"
                         className="h-8"
@@ -1399,23 +1355,22 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       <Button
                         variant="outline"
                         className="h-8"
-                        onClick={() => printTable(
-                          'Contractors',
-                          [
-                            { label: 'Name', value: (row: any) => row.name },
-                            { label: 'Email', value: (row: any) => row.email || '-' },
-                            { label: 'Phone', value: (row: any) => row.phone || '-' },
-                            {
-                              label: 'Specialization',
-                              value: (row: any) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
-                            },
-                          ] as ExportColumn<any>[],
-                          filteredContractors,
-                          `${contractorStartDate || 'All'} to ${contractorEndDate || 'All'}`
-                        )}
-                      >
-                        Print PDF
-                      </Button>
+                      onClick={() => printTable(
+                        'Contractors',
+                        [
+                          { label: 'Name', value: (row: any) => row.name },
+                          { label: 'Email', value: (row: any) => row.email || '-' },
+                          { label: 'Phone', value: (row: any) => row.phone || '-' },
+                          {
+                            label: 'Specialization',
+                            value: (row: any) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
+                          },
+                        ] as ExportColumn<any>[],
+                        filteredContractors
+                      )}
+                    >
+                      Print PDF
+                    </Button>
                     </div>
                   <Table>
                     <TableHeader>
