@@ -12,6 +12,7 @@ import { ContactCard } from '@/app/components/contact-card';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { ActivityLog } from '@/app/components/activity-log';
 import { ProfileSettings } from '@/app/components/profile-settings';
+import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { Building2, Package, AlertCircle, Users, LogOut, Plus, UserPlus, Settings } from 'lucide-react';
 import { projectId } from '/utils/supabase/info';
@@ -42,6 +43,29 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
   const [selectedFM, setSelectedFM] = useState<any>(null);
+
+  const [issueSearch, setIssueSearch] = useState('');
+  const [issueStatusFilter, setIssueStatusFilter] = useState('all');
+  const [issuePriorityFilter, setIssuePriorityFilter] = useState('all');
+  const [issueStartDate, setIssueStartDate] = useState('');
+  const [issueEndDate, setIssueEndDate] = useState('');
+
+  const [equipmentSearch, setEquipmentSearch] = useState('');
+  const [equipmentHealthFilter, setEquipmentHealthFilter] = useState('all');
+  const [equipmentStartDate, setEquipmentStartDate] = useState('');
+  const [equipmentEndDate, setEquipmentEndDate] = useState('');
+
+  const [facilitySearch, setFacilitySearch] = useState('');
+  const [facilityStartDate, setFacilityStartDate] = useState('');
+  const [facilityEndDate, setFacilityEndDate] = useState('');
+
+  const [managerSearch, setManagerSearch] = useState('');
+  const [managerStartDate, setManagerStartDate] = useState('');
+  const [managerEndDate, setManagerEndDate] = useState('');
+
+  const [contractorSearch, setContractorSearch] = useState('');
+  const [contractorStartDate, setContractorStartDate] = useState('');
+  const [contractorEndDate, setContractorEndDate] = useState('');
   
   const [facilityData, setFacilityData] = useState({ 
     name: '', 
@@ -366,8 +390,57 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
+  const issueQuery = issueSearch.trim().toLowerCase();
+  const filteredIssues = issues.filter((issue) => {
+    const matchesQuery = !issueQuery
+      || `${issue.equipmentName} ${issue.description} ${issue.id} ${issue.reportedBy?.name || ''}`
+        .toLowerCase()
+        .includes(issueQuery);
+    const matchesStatus = issueStatusFilter === 'all' || issue.status === issueStatusFilter;
+    const matchesPriority = issuePriorityFilter === 'all' || issue.priority === issuePriorityFilter;
+    const matchesDate = inDateRange(issue.createdAt || issue.updatedAt, issueStartDate, issueEndDate);
+    return matchesQuery && matchesStatus && matchesPriority && matchesDate;
+  });
+
+  const equipmentQuery = equipmentSearch.trim().toLowerCase();
+  const filteredEquipment = equipment.filter((eq) => {
+    const matchesQuery = !equipmentQuery
+      || `${eq.name} ${eq.category} ${eq.location || ''} ${eq.id}`.toLowerCase().includes(equipmentQuery);
+    const matchesHealth = equipmentHealthFilter === 'all' || eq.healthStatus === equipmentHealthFilter;
+    const matchesDate = inDateRange(eq.createdAt || eq.recordedAt, equipmentStartDate, equipmentEndDate);
+    return matchesQuery && matchesHealth && matchesDate;
+  });
+
+  const facilityQuery = facilitySearch.trim().toLowerCase();
+  const filteredFacilities = facilities.filter((facility) => {
+    const matchesQuery = !facilityQuery
+      || `${facility.name} ${facility.location || ''} ${facility.address || ''} ${facility.id}`
+        .toLowerCase()
+        .includes(facilityQuery);
+    const matchesDate = inDateRange(facility.createdAt, facilityStartDate, facilityEndDate);
+    return matchesQuery && matchesDate;
+  });
+
+  const managerQuery = managerSearch.trim().toLowerCase();
+  const filteredManagers = companyUsers
+    .filter((user) => user.role === 'facility_manager')
+    .filter((fm) => {
+      const matchesQuery = !managerQuery
+        || `${fm.name} ${fm.email || ''} ${fm.phone || ''}`.toLowerCase().includes(managerQuery);
+      const matchesDate = inDateRange(fm.createdAt, managerStartDate, managerEndDate);
+      return matchesQuery && matchesDate;
+    });
+
+  const contractorQuery = contractorSearch.trim().toLowerCase();
+  const filteredContractors = contractors.filter((contractor) => {
+    const matchesQuery = !contractorQuery
+      || `${contractor.name} ${contractor.email || ''} ${contractor.phone || ''}`.toLowerCase().includes(contractorQuery);
+    const matchesDate = inDateRange(contractor.createdAt, contractorStartDate, contractorEndDate);
+    return matchesQuery && matchesDate;
+  });
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
@@ -399,7 +472,29 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
       </header>
 
       {/* Main Content */}
-      <main className="p-6">
+      <main className="flex-1 min-h-0">
+        {/* Tabbed Content */}
+        <Tabs defaultValue="overview" className="flex h-full min-h-0">
+          <TabsList className="hidden w-60 shrink-0 flex-col items-stretch gap-1 border-r border-border bg-sidebar px-4 py-6 md:flex">
+            <TabsTrigger value="overview" className="justify-start">Overview</TabsTrigger>
+            <TabsTrigger value="facilities" className="justify-start">Facilities</TabsTrigger>
+            <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
+            <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
+            <TabsTrigger value="team" className="justify-start">Team</TabsTrigger>
+            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
+          </TabsList>
+
+          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+            <div className="md:hidden">
+              <TabsList className="w-full">
+                <TabsTrigger value="overview" className="justify-start">Overview</TabsTrigger>
+                <TabsTrigger value="facilities" className="justify-start">Facilities</TabsTrigger>
+                <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
+                <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
+                <TabsTrigger value="team" className="justify-start">Team</TabsTrigger>
+                <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
+              </TabsList>
+            </div>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card>
@@ -450,18 +545,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
           </Card>
         </div>
 
-        {/* Tabbed Content */}
-        <Tabs defaultValue="overview" className="flex flex-col gap-6 md:flex-row">
-          <TabsList className="w-full md:w-56 md:flex-col md:items-stretch md:gap-1 md:border-b-0 md:border-r md:pr-4 md:sticky md:top-24">
-            <TabsTrigger value="overview" className="justify-start">Overview</TabsTrigger>
-            <TabsTrigger value="facilities" className="justify-start">Facilities</TabsTrigger>
-            <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
-            <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
-            <TabsTrigger value="team" className="justify-start">Team</TabsTrigger>
-            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
-          </TabsList>
 
-          <div className="flex-1 space-y-6">
             <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Issues */}
@@ -637,6 +721,68 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                     </DialogContent>
                   </Dialog>
                 </div>
+                <div className="mt-4 flex flex-wrap items-end gap-3">
+                  <div className="flex-1 min-w-[200px]">
+                    <Label className="text-xs text-slate-500">Search</Label>
+                    <Input
+                      value={facilitySearch}
+                      onChange={(e) => setFacilitySearch(e.target.value)}
+                      placeholder="Search facilities"
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">From</Label>
+                    <Input
+                      type="date"
+                      value={facilityStartDate}
+                      onChange={(e) => setFacilityStartDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">To</Label>
+                    <Input
+                      type="date"
+                      value={facilityEndDate}
+                      onChange={(e) => setFacilityEndDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => downloadCsv(
+                      `facilities-${companyId}.csv`,
+                      [
+                        { label: 'Facility', value: (row: any) => row.name },
+                        { label: 'Location', value: (row: any) => row.location || '-' },
+                        { label: 'Address', value: (row: any) => row.address || '-' },
+                        { label: 'ID', value: (row: any) => row.id },
+                      ] as ExportColumn<any>[],
+                      filteredFacilities
+                    )}
+                  >
+                    Download CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => printTable(
+                      'Facilities',
+                      [
+                        { label: 'Facility', value: (row: any) => row.name },
+                        { label: 'Location', value: (row: any) => row.location || '-' },
+                        { label: 'Address', value: (row: any) => row.address || '-' },
+                        { label: 'ID', value: (row: any) => row.id },
+                      ] as ExportColumn<any>[],
+                      filteredFacilities,
+                      `${facilityStartDate || 'All'} to ${facilityEndDate || 'All'}`
+                    )}
+                  >
+                    Print PDF
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -649,14 +795,14 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {facilities.length === 0 ? (
+                    {filteredFacilities.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center text-sm text-slate-500">
                           No facilities yet
                         </TableCell>
                       </TableRow>
                     ) : (
-                      facilities.map((facility) => (
+                      filteredFacilities.map((facility) => (
                         <TableRow key={facility.id}>
                           <TableCell>
                             <div className="font-medium text-slate-900">{facility.name}</div>
@@ -685,6 +831,84 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
               <CardHeader>
                 <CardTitle>Equipment Registry</CardTitle>
                 <CardDescription>All equipment across facilities</CardDescription>
+                <div className="mt-4 flex flex-wrap items-end gap-3">
+                  <div className="flex-1 min-w-[200px]">
+                    <Label className="text-xs text-slate-500">Search</Label>
+                    <Input
+                      value={equipmentSearch}
+                      onChange={(e) => setEquipmentSearch(e.target.value)}
+                      placeholder="Search equipment"
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="min-w-[150px]">
+                    <Label className="text-xs text-slate-500">Health</Label>
+                    <Select value={equipmentHealthFilter} onValueChange={setEquipmentHealthFilter}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="green">Good</SelectItem>
+                        <SelectItem value="yellow">Concerning</SelectItem>
+                        <SelectItem value="red">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">From</Label>
+                    <Input
+                      type="date"
+                      value={equipmentStartDate}
+                      onChange={(e) => setEquipmentStartDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">To</Label>
+                    <Input
+                      type="date"
+                      value={equipmentEndDate}
+                      onChange={(e) => setEquipmentEndDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => downloadCsv(
+                      `equipment-${companyId}.csv`,
+                      [
+                        { label: 'Equipment', value: (row: any) => row.name },
+                        { label: 'Category', value: (row: any) => row.category || '-' },
+                        { label: 'Health', value: (row: any) => row.healthStatus || '-' },
+                        { label: 'Location', value: (row: any) => row.location || '-' },
+                        { label: 'Recorded By', value: (row: any) => row.recordedBy?.name || '-' },
+                      ] as ExportColumn<any>[],
+                      filteredEquipment
+                    )}
+                  >
+                    Download CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => printTable(
+                      'Equipment Registry',
+                      [
+                        { label: 'Equipment', value: (row: any) => row.name },
+                        { label: 'Category', value: (row: any) => row.category || '-' },
+                        { label: 'Health', value: (row: any) => row.healthStatus || '-' },
+                        { label: 'Location', value: (row: any) => row.location || '-' },
+                        { label: 'Recorded By', value: (row: any) => row.recordedBy?.name || '-' },
+                      ] as ExportColumn<any>[],
+                      filteredEquipment,
+                      `${equipmentStartDate || 'All'} to ${equipmentEndDate || 'All'}`
+                    )}
+                  >
+                    Print PDF
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -698,14 +922,14 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {equipment.length === 0 ? (
+                    {filteredEquipment.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-sm text-slate-500">
                           No equipment registered
                         </TableCell>
                       </TableRow>
                     ) : (
-                      equipment.map((eq) => (
+                      filteredEquipment.map((eq) => (
                         <TableRow
                           key={eq.id}
                           className="cursor-pointer"
@@ -743,6 +967,104 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
               <CardHeader>
                 <CardTitle>All Issues</CardTitle>
                 <CardDescription>Complete issue tracking</CardDescription>
+                <div className="mt-4 flex flex-wrap items-end gap-3">
+                  <div className="flex-1 min-w-[220px]">
+                    <Label className="text-xs text-slate-500">Search</Label>
+                    <Input
+                      value={issueSearch}
+                      onChange={(e) => setIssueSearch(e.target.value)}
+                      placeholder="Search issues"
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="min-w-[150px]">
+                    <Label className="text-xs text-slate-500">Status</Label>
+                    <Select value={issueStatusFilter} onValueChange={setIssueStatusFilter}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="created">Created</SelectItem>
+                        <SelectItem value="assigned">Assigned</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="awaiting_parts">Awaiting Parts</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="min-w-[150px]">
+                    <Label className="text-xs text-slate-500">Priority</Label>
+                    <Select value={issuePriorityFilter} onValueChange={setIssuePriorityFilter}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">From</Label>
+                    <Input
+                      type="date"
+                      value={issueStartDate}
+                      onChange={(e) => setIssueStartDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">To</Label>
+                    <Input
+                      type="date"
+                      value={issueEndDate}
+                      onChange={(e) => setIssueEndDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => downloadCsv(
+                      `issues-${companyId}.csv`,
+                      [
+                        { label: 'Issue', value: (row: any) => row.equipmentName },
+                        { label: 'Description', value: (row: any) => row.description },
+                        { label: 'Priority', value: (row: any) => row.priority },
+                        { label: 'Status', value: (row: any) => row.status },
+                        { label: 'Reported By', value: (row: any) => row.reportedBy?.name || '-' },
+                        { label: 'Created', value: (row: any) => row.createdAt },
+                      ] as ExportColumn<any>[],
+                      filteredIssues
+                    )}
+                  >
+                    Download CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => printTable(
+                      'Issues Report',
+                      [
+                        { label: 'Issue', value: (row: any) => row.equipmentName },
+                        { label: 'Description', value: (row: any) => row.description },
+                        { label: 'Priority', value: (row: any) => row.priority },
+                        { label: 'Status', value: (row: any) => row.status },
+                        { label: 'Reported By', value: (row: any) => row.reportedBy?.name || '-' },
+                        { label: 'Created', value: (row: any) => row.createdAt },
+                      ] as ExportColumn<any>[],
+                      filteredIssues,
+                      `${issueStartDate || 'All'} to ${issueEndDate || 'All'}`
+                    )}
+                  >
+                    Print PDF
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -756,14 +1078,14 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {issues.length === 0 ? (
+                    {filteredIssues.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-sm text-slate-500">
                           No issues reported
                         </TableCell>
                       </TableRow>
                     ) : (
-                      issues.map((issue) => (
+                      filteredIssues.map((issue) => (
                         <TableRow
                           key={issue.id}
                           className="cursor-pointer"
@@ -875,6 +1197,68 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       </DialogContent>
                     </Dialog>
                   </div>
+                  <div className="mt-4 flex flex-wrap items-end gap-3">
+                    <div className="flex-1 min-w-[200px]">
+                      <Label className="text-xs text-slate-500">Search</Label>
+                      <Input
+                        value={managerSearch}
+                        onChange={(e) => setManagerSearch(e.target.value)}
+                        placeholder="Search managers"
+                        className="h-8"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">From</Label>
+                      <Input
+                        type="date"
+                        value={managerStartDate}
+                        onChange={(e) => setManagerStartDate(e.target.value)}
+                        className="h-8"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">To</Label>
+                      <Input
+                        type="date"
+                        value={managerEndDate}
+                        onChange={(e) => setManagerEndDate(e.target.value)}
+                        className="h-8"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => downloadCsv(
+                        `facility-managers-${companyId}.csv`,
+                        [
+                          { label: 'Name', value: (row: any) => row.name },
+                          { label: 'Email', value: (row: any) => row.email || '-' },
+                          { label: 'Phone', value: (row: any) => row.phone || '-' },
+                          { label: 'Facilities', value: (row: any) => row.facilityIds?.length || 0 },
+                        ] as ExportColumn<any>[],
+                        filteredManagers
+                      )}
+                    >
+                      Download CSV
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => printTable(
+                        'Facility Managers',
+                        [
+                          { label: 'Name', value: (row: any) => row.name },
+                          { label: 'Email', value: (row: any) => row.email || '-' },
+                          { label: 'Phone', value: (row: any) => row.phone || '-' },
+                          { label: 'Facilities', value: (row: any) => row.facilityIds?.length || 0 },
+                        ] as ExportColumn<any>[],
+                        filteredManagers,
+                        `${managerStartDate || 'All'} to ${managerEndDate || 'All'}`
+                      )}
+                    >
+                      Print PDF
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -887,14 +1271,14 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {companyUsers.filter(u => u.role === 'facility_manager').length === 0 ? (
+                      {filteredManagers.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={4} className="text-center text-sm text-slate-500">
                             No facility managers yet
                           </TableCell>
                         </TableRow>
                       ) : (
-                        companyUsers.filter(u => u.role === 'facility_manager').map((fm) => (
+                        filteredManagers.map((fm) => (
                           <TableRow key={fm.id}>
                             <TableCell>
                               <div className="font-medium text-slate-900">{fm.name}</div>
@@ -959,6 +1343,74 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   </div>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-4 flex flex-wrap items-end gap-3">
+                      <div className="flex-1 min-w-[200px]">
+                        <Label className="text-xs text-slate-500">Search</Label>
+                        <Input
+                          value={contractorSearch}
+                          onChange={(e) => setContractorSearch(e.target.value)}
+                          placeholder="Search contractors"
+                          className="h-8"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">From</Label>
+                        <Input
+                          type="date"
+                          value={contractorStartDate}
+                          onChange={(e) => setContractorStartDate(e.target.value)}
+                          className="h-8"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">To</Label>
+                        <Input
+                          type="date"
+                          value={contractorEndDate}
+                          onChange={(e) => setContractorEndDate(e.target.value)}
+                          className="h-8"
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => downloadCsv(
+                          `contractors-${companyId}.csv`,
+                          [
+                            { label: 'Name', value: (row: any) => row.name },
+                            { label: 'Email', value: (row: any) => row.email || '-' },
+                            { label: 'Phone', value: (row: any) => row.phone || '-' },
+                            {
+                              label: 'Specialization',
+                              value: (row: any) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
+                            },
+                          ] as ExportColumn<any>[],
+                          filteredContractors
+                        )}
+                      >
+                        Download CSV
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => printTable(
+                          'Contractors',
+                          [
+                            { label: 'Name', value: (row: any) => row.name },
+                            { label: 'Email', value: (row: any) => row.email || '-' },
+                            { label: 'Phone', value: (row: any) => row.phone || '-' },
+                            {
+                              label: 'Specialization',
+                              value: (row: any) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
+                            },
+                          ] as ExportColumn<any>[],
+                          filteredContractors,
+                          `${contractorStartDate || 'All'} to ${contractorEndDate || 'All'}`
+                        )}
+                      >
+                        Print PDF
+                      </Button>
+                    </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -969,14 +1421,14 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {contractors.length === 0 ? (
+                      {filteredContractors.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={4} className="text-center text-sm text-slate-500">
                             No contractors assigned
                           </TableCell>
                         </TableRow>
                       ) : (
-                        contractors.map((contractor) => (
+                        filteredContractors.map((contractor) => (
                           <TableRow key={contractor.id}>
                             <TableCell>
                               <div className="font-medium text-slate-900">{contractor.name}</div>
@@ -987,7 +1439,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                               <div className="text-xs text-slate-500">{contractor.phone || '-'}</div>
                             </TableCell>
                             <TableCell className="text-sm text-slate-600">
-                              {contractor.specialization || contractor.skillso.join(', ') || '-'}
+                              {contractor.specialization || (Array.isArray(contractor.skills) ? contractor.skills.join(', ') : contractor.skills) || '-'}
                             </TableCell>
                             <TableCell>
                               <Button size="sm" variant="destructive" onClick={() => handleRemoveContractor(contractor.id)}>

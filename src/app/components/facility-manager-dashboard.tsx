@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/ta
 import { ContactCard } from '@/app/components/contact-card';
 import { ActivityLog } from '@/app/components/activity-log';
 import { ProfileSettings } from '@/app/components/profile-settings';
+import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { Package, AlertCircle, LogOut, Plus, CheckCircle } from 'lucide-react';
 import { projectId } from '/utils/supabase/info';
@@ -65,6 +66,21 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     feedback: '',
     rating: 0
   });
+
+  const [issueSearch, setIssueSearch] = useState('');
+  const [issueStatusFilter, setIssueStatusFilter] = useState('all');
+  const [issuePriorityFilter, setIssuePriorityFilter] = useState('all');
+  const [issueStartDate, setIssueStartDate] = useState('');
+  const [issueEndDate, setIssueEndDate] = useState('');
+
+  const [equipmentSearch, setEquipmentSearch] = useState('');
+  const [equipmentHealthFilter, setEquipmentHealthFilter] = useState('all');
+  const [equipmentStartDate, setEquipmentStartDate] = useState('');
+  const [equipmentEndDate, setEquipmentEndDate] = useState('');
+
+  const [contractorSearch, setContractorSearch] = useState('');
+  const [contractorStartDate, setContractorStartDate] = useState('');
+  const [contractorEndDate, setContractorEndDate] = useState('');
 
   useEffect(() => {
     if (companyId) {
@@ -299,11 +315,11 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   const getContractorName = (contractorId: string | null) => {
     if (!contractorId) return 'Unassigned';
     const contractor = contractors.find((item) => item.id === contractorId);
-    return contractoro.name || contractorId;
+    return contractor?.name || contractorId;
   };
 
-  const renderAttachmentList = (attachmentso: any[]) => {
-    if (!attachmentso.length) return null;
+  const renderAttachmentList = (attachments: any[]) => {
+    if (!attachments.length) return null;
     return (
       <div className="mt-2 space-y-1">
         {attachments.map((file, index) => (
@@ -321,10 +337,39 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     );
   };
 
+  const issueQuery = issueSearch.trim().toLowerCase();
+  const filteredIssues = issues.filter((issue) => {
+    const matchesQuery = !issueQuery
+      || `${issue.equipmentName || ''} ${issue.title || ''} ${issue.description || ''} ${issue.id} ${issue.reportedBy?.name || ''}`
+        .toLowerCase()
+        .includes(issueQuery);
+    const matchesStatus = issueStatusFilter === 'all' || issue.status === issueStatusFilter;
+    const matchesPriority = issuePriorityFilter === 'all' || issue.priority === issuePriorityFilter;
+    const matchesDate = inDateRange(issue.createdAt || issue.updatedAt, issueStartDate, issueEndDate);
+    return matchesQuery && matchesStatus && matchesPriority && matchesDate;
+  });
+
+  const equipmentQuery = equipmentSearch.trim().toLowerCase();
+  const filteredEquipment = equipment.filter((eq) => {
+    const matchesQuery = !equipmentQuery
+      || `${eq.name} ${eq.category} ${eq.location || ''} ${eq.id}`.toLowerCase().includes(equipmentQuery);
+    const matchesHealth = equipmentHealthFilter === 'all' || eq.healthStatus === equipmentHealthFilter;
+    const matchesDate = inDateRange(eq.createdAt || eq.recordedAt, equipmentStartDate, equipmentEndDate);
+    return matchesQuery && matchesHealth && matchesDate;
+  });
+
+  const contractorQuery = contractorSearch.trim().toLowerCase();
+  const filteredContractors = contractors.filter((contractor) => {
+    const matchesQuery = !contractorQuery
+      || `${contractor.name} ${contractor.email || ''} ${contractor.phone || ''}`.toLowerCase().includes(contractorQuery);
+    const matchesDate = inDateRange(contractor.createdAt, contractorStartDate, contractorEndDate);
+    return matchesQuery && matchesDate;
+  });
+
   const totalEquipmentCount = Math.max(stats?.totalEquipment || 0, equipment.length);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
@@ -356,7 +401,25 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
       </header>
 
       {/* Main Content */}
-      <main className="p-6">
+      <main className="flex-1 min-h-0">
+        {/* Tabbed Content */}
+        <Tabs defaultValue="issues" className="flex h-full min-h-0">
+          <TabsList className="hidden w-60 shrink-0 flex-col items-stretch gap-1 border-r border-border bg-sidebar px-4 py-6 md:flex">
+            <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
+            <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
+            <TabsTrigger value="contractors" className="justify-start">Contractors</TabsTrigger>
+            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
+          </TabsList>
+
+          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+            <div className="md:hidden">
+              <TabsList className="w-full">
+                <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
+                <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
+                <TabsTrigger value="contractors" className="justify-start">Contractors</TabsTrigger>
+                <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
+              </TabsList>
+            </div>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card>
@@ -409,16 +472,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
           </Card>
         </div>
 
-        {/* Tabbed Content */}
-        <Tabs defaultValue="issues" className="flex flex-col gap-6 md:flex-row">
-          <TabsList className="w-full md:w-56 md:flex-col md:items-stretch md:gap-1 md:border-b-0 md:border-r md:pr-4 md:sticky md:top-24">
-            <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
-            <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
-            <TabsTrigger value="contractors" className="justify-start">Contractors</TabsTrigger>
-            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
-          </TabsList>
 
-          <div className="flex-1 space-y-6">
             <TabsContent value="issues" className="space-y-4">
             <Card>
               <CardHeader>
@@ -540,6 +594,103 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                     </DialogContent>
                   </Dialog>
                 </div>
+                <div className="mt-4 flex flex-wrap items-end gap-3">
+                  <div className="flex-1 min-w-[200px]">
+                    <Label className="text-xs text-slate-500">Search</Label>
+                    <Input
+                      value={issueSearch}
+                      onChange={(e) => setIssueSearch(e.target.value)}
+                      placeholder="Search issues"
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">Status</Label>
+                    <Select value={issueStatusFilter} onValueChange={setIssueStatusFilter}>
+                      <SelectTrigger className="h-8 w-[150px]">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="created">Created</SelectItem>
+                        <SelectItem value="assigned">Assigned</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="awaiting_parts">Awaiting Parts</SelectItem>
+                        <SelectItem value="escalated">Escalated</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">Priority</Label>
+                    <Select value={issuePriorityFilter} onValueChange={setIssuePriorityFilter}>
+                      <SelectTrigger className="h-8 w-[140px]">
+                        <SelectValue placeholder="Priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">From</Label>
+                    <Input
+                      type="date"
+                      value={issueStartDate}
+                      onChange={(e) => setIssueStartDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">To</Label>
+                    <Input
+                      type="date"
+                      value={issueEndDate}
+                      onChange={(e) => setIssueEndDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => downloadCsv(
+                      `issues-${companyId}.csv`,
+                      [
+                        { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                        { label: 'Priority', value: (row: any) => row.priority },
+                        { label: 'Status', value: (row: any) => row.status },
+                        { label: 'Assigned', value: (row: any) => row.assignedTo ? getContractorName(row.assignedTo) : '-' },
+                        { label: 'Created', value: (row: any) => row.createdAt || row.updatedAt || '-' },
+                      ] as ExportColumn<any>[],
+                      filteredIssues
+                    )}
+                  >
+                    Download CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => printTable(
+                      'Issues',
+                      [
+                        { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                        { label: 'Priority', value: (row: any) => row.priority },
+                        { label: 'Status', value: (row: any) => row.status },
+                        { label: 'Assigned', value: (row: any) => row.assignedTo ? getContractorName(row.assignedTo) : '-' },
+                        { label: 'Created', value: (row: any) => row.createdAt || row.updatedAt || '-' },
+                      ] as ExportColumn<any>[],
+                      filteredIssues,
+                      `${issueStartDate || 'All'} to ${issueEndDate || 'All'}`
+                    )}
+                  >
+                    Print PDF
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -553,14 +704,14 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {issues.length === 0 ? (
+                    {filteredIssues.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-sm text-slate-500">
                           No issues reported
                         </TableCell>
                       </TableRow>
                     ) : (
-                      issues.map((issue) => (
+                      filteredIssues.map((issue) => (
                         <TableRow
                           key={issue.id}
                           className="cursor-pointer"
@@ -748,6 +899,86 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                     </DialogContent>
                   </Dialog>
                 </div>
+                <div className="mt-4 flex flex-wrap items-end gap-3">
+                  <div className="flex-1 min-w-[200px]">
+                    <Label className="text-xs text-slate-500">Search</Label>
+                    <Input
+                      value={equipmentSearch}
+                      onChange={(e) => setEquipmentSearch(e.target.value)}
+                      placeholder="Search equipment"
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">Health</Label>
+                    <Select value={equipmentHealthFilter} onValueChange={setEquipmentHealthFilter}>
+                      <SelectTrigger className="h-8 w-[140px]">
+                        <SelectValue placeholder="Health" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="green">Good</SelectItem>
+                        <SelectItem value="yellow">Concerning</SelectItem>
+                        <SelectItem value="red">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">From</Label>
+                    <Input
+                      type="date"
+                      value={equipmentStartDate}
+                      onChange={(e) => setEquipmentStartDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">To</Label>
+                    <Input
+                      type="date"
+                      value={equipmentEndDate}
+                      onChange={(e) => setEquipmentEndDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => downloadCsv(
+                      `equipment-${companyId}.csv`,
+                      [
+                        { label: 'Equipment', value: (row: any) => row.name },
+                        { label: 'Category', value: (row: any) => row.category || '-' },
+                        { label: 'Health', value: (row: any) => row.healthStatus || '-' },
+                        { label: 'Location', value: (row: any) => row.location || '-' },
+                        { label: 'Recorded By', value: (row: any) => row.recordedBy?.name || '-' },
+                        { label: 'Recorded At', value: (row: any) => row.createdAt || row.recordedAt || '-' },
+                      ] as ExportColumn<any>[],
+                      filteredEquipment
+                    )}
+                  >
+                    Download CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => printTable(
+                      'Equipment Registry',
+                      [
+                        { label: 'Equipment', value: (row: any) => row.name },
+                        { label: 'Category', value: (row: any) => row.category || '-' },
+                        { label: 'Health', value: (row: any) => row.healthStatus || '-' },
+                        { label: 'Location', value: (row: any) => row.location || '-' },
+                        { label: 'Recorded By', value: (row: any) => row.recordedBy?.name || '-' },
+                        { label: 'Recorded At', value: (row: any) => row.createdAt || row.recordedAt || '-' },
+                      ] as ExportColumn<any>[],
+                      filteredEquipment,
+                      `${equipmentStartDate || 'All'} to ${equipmentEndDate || 'All'}`
+                    )}
+                  >
+                    Print PDF
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -761,14 +992,14 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {equipment.length === 0 ? (
+                    {filteredEquipment.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-sm text-slate-500">
                           No equipment registered
                         </TableCell>
                       </TableRow>
                     ) : (
-                      equipment.map((eq) => (
+                      filteredEquipment.map((eq) => (
                         <TableRow
                           key={eq.id}
                           className="cursor-pointer"
@@ -804,6 +1035,74 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
               <CardHeader>
                 <CardTitle>Assigned Contractors</CardTitle>
                 <CardDescription>Contractors working on your facilities</CardDescription>
+                <div className="mt-4 flex flex-wrap items-end gap-3">
+                  <div className="flex-1 min-w-[200px]">
+                    <Label className="text-xs text-slate-500">Search</Label>
+                    <Input
+                      value={contractorSearch}
+                      onChange={(e) => setContractorSearch(e.target.value)}
+                      placeholder="Search contractors"
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">From</Label>
+                    <Input
+                      type="date"
+                      value={contractorStartDate}
+                      onChange={(e) => setContractorStartDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">To</Label>
+                    <Input
+                      type="date"
+                      value={contractorEndDate}
+                      onChange={(e) => setContractorEndDate(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => downloadCsv(
+                      `contractors-${companyId}.csv`,
+                      [
+                        { label: 'Name', value: (row: any) => row.name },
+                        { label: 'Email', value: (row: any) => row.email || '-' },
+                        { label: 'Phone', value: (row: any) => row.phone || '-' },
+                        {
+                          label: 'Specialization',
+                          value: (row: any) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
+                        },
+                      ] as ExportColumn<any>[],
+                      filteredContractors
+                    )}
+                  >
+                    Download CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => printTable(
+                      'Contractors',
+                      [
+                        { label: 'Name', value: (row: any) => row.name },
+                        { label: 'Email', value: (row: any) => row.email || '-' },
+                        { label: 'Phone', value: (row: any) => row.phone || '-' },
+                        {
+                          label: 'Specialization',
+                          value: (row: any) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
+                        },
+                      ] as ExportColumn<any>[],
+                      filteredContractors,
+                      `${contractorStartDate || 'All'} to ${contractorEndDate || 'All'}`
+                    )}
+                  >
+                    Print PDF
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -815,14 +1114,14 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contractors.length === 0 ? (
+                    {filteredContractors.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center text-sm text-slate-500">
                           No contractors assigned
                         </TableCell>
                       </TableRow>
                     ) : (
-                      contractors.map((contractor) => (
+                      filteredContractors.map((contractor) => (
                         <TableRow key={contractor.id}>
                           <TableCell>
                             <div className="font-medium text-slate-900">{contractor.name}</div>
@@ -833,7 +1132,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                             <div className="text-xs text-slate-500">{contractor.phone || '-'}</div>
                           </TableCell>
                           <TableCell className="text-sm text-slate-600">
-                            {contractor.specialization || contractor.skillso.join(', ') || '-'}
+                            {contractor.specialization || (Array.isArray(contractor.skills) ? contractor.skills.join(', ') : contractor.skills) || '-'}
                           </TableCell>
                         </TableRow>
                       ))
@@ -912,7 +1211,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                     )}
                   </div>
                   {renderAttachmentList(selectedIssue.completion.reportAttachments)}
-                  {selectedIssue.completion.proofDocumentso.length > 0 && (
+                  {selectedIssue.completion.proofDocuments?.length > 0 && (
                     <div className="mt-2 space-y-1">
                       {selectedIssue.completion.proofDocuments.map((doc: string, index: number) => (
                         <a

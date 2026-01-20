@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Badge } from '@/app/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ContactCard } from '@/app/components/contact-card';
@@ -11,6 +13,7 @@ import { ActivityLog } from '@/app/components/activity-log';
 import { JobActionModal } from '@/app/components/job-action-modal';
 import { ProfileSettings } from '@/app/components/profile-settings';
 import { NotificationsPanel } from '@/app/components/notifications-panel';
+import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { Wrench, Clock, CheckCircle, AlertCircle, LogOut, Building2 } from 'lucide-react';
 import { projectId } from '/utils/supabase/info';
@@ -34,6 +37,10 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   const [jobAction, setJobAction] = useState<{ issue: any; action: 'respond' | 'complete' } | null>(null);
   const activeRole = companyBindings.find((binding) => binding.companyId === companyId)?.role || user?.role || 'contractor';
   const [companyDirectory, setCompanyDirectory] = useState<Record<string, any>>({});
+  const [issueSearch, setIssueSearch] = useState('');
+  const [issuePriorityFilter, setIssuePriorityFilter] = useState('all');
+  const [issueStartDate, setIssueStartDate] = useState('');
+  const [issueEndDate, setIssueEndDate] = useState('');
 
   useEffect(() => {
     loadDashboardData();
@@ -188,13 +195,24 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const pendingIssues = sortedIssues.filter(i => ['created', 'assigned'].includes(i.status));
-  const inProgressIssues = sortedIssues.filter(i => ['in_progress', 'awaiting_parts'].includes(i.status));
-  const completedIssues = sortedIssues.filter(i => ['completed', 'approved', 'closed'].includes(i.status));
-  const escalatedIssues = sortedIssues.filter(i => i.status === 'escalated');
+  const issueQuery = issueSearch.trim().toLowerCase();
+  const filteredIssues = sortedIssues.filter((issue) => {
+    const matchesQuery = !issueQuery
+      || `${issue.equipmentName || ''} ${issue.title || ''} ${issue.description || ''} ${issue.id} ${issue.reportedBy?.name || ''}`
+        .toLowerCase()
+        .includes(issueQuery);
+    const matchesPriority = issuePriorityFilter === 'all' || issue.priority === issuePriorityFilter;
+    const matchesDate = inDateRange(issue.createdAt || issue.updatedAt, issueStartDate, issueEndDate);
+    return matchesQuery && matchesPriority && matchesDate;
+  });
+
+  const pendingIssues = filteredIssues.filter(i => ['created', 'assigned'].includes(i.status));
+  const inProgressIssues = filteredIssues.filter(i => ['in_progress', 'awaiting_parts'].includes(i.status));
+  const completedIssues = filteredIssues.filter(i => ['completed', 'approved', 'closed'].includes(i.status));
+  const escalatedIssues = filteredIssues.filter(i => i.status === 'escalated');
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
@@ -229,7 +247,37 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
       </header>
 
       {/* Main Content */}
-      <main className="p-6 space-y-6">
+      <main className="flex-1 min-h-0">
+        <Tabs defaultValue="pending" className="flex h-full min-h-0">
+          <TabsList className="hidden w-60 shrink-0 flex-col items-stretch gap-1 border-r border-border bg-sidebar px-4 py-6 md:flex">
+            <TabsTrigger value="pending" className="justify-start">
+              Pending ({pendingIssues.length})
+            </TabsTrigger>
+            <TabsTrigger value="inprogress" className="justify-start">
+              In Progress ({inProgressIssues.length})
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="justify-start">
+              Completed ({completedIssues.length})
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="justify-start">Notifications</TabsTrigger>
+            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
+            {escalatedIssues.length > 0 && (
+              <TabsTrigger value="escalated" className="justify-start text-red-600">
+                Escalated ({escalatedIssues.length})
+              </TabsTrigger>
+            )}
+          </TabsList>
+
+          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+            <div className="md:hidden">
+              <TabsList className="w-full">
+                <TabsTrigger value="pending" className="justify-start">Pending ({pendingIssues.length})</TabsTrigger>
+                <TabsTrigger value="inprogress" className="justify-start">In Progress ({inProgressIssues.length})</TabsTrigger>
+                <TabsTrigger value="completed" className="justify-start">Completed ({completedIssues.length})</TabsTrigger>
+                <TabsTrigger value="notifications" className="justify-start">Notifications</TabsTrigger>
+                <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
+              </TabsList>
+            </div>
         {/* Stats Grid */}
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 ${companyId ? 'mb-6' : ''}`}>
           <Card>
@@ -286,6 +334,54 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
           </Card>
         </div>
 
+        {companyId && (
+          <div className="rounded-md border border-border bg-white px-4 py-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <Label className="text-xs text-slate-500">Search</Label>
+                <Input
+                  value={issueSearch}
+                  onChange={(e) => setIssueSearch(e.target.value)}
+                  placeholder="Search issues"
+                  className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-slate-500">Priority</Label>
+                <Select value={issuePriorityFilter} onValueChange={setIssuePriorityFilter}>
+                  <SelectTrigger className="h-8 w-[140px]">
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-slate-500">From</Label>
+                <Input
+                  type="date"
+                  value={issueStartDate}
+                  onChange={(e) => setIssueStartDate(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-slate-500">To</Label>
+                <Input
+                  type="date"
+                  value={issueEndDate}
+                  onChange={(e) => setIssueEndDate(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {!companyId && (
           <Card className="border-slate-200 bg-slate-50">
             <CardContent className="py-6 text-sm text-slate-600">
@@ -307,32 +403,53 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
         )}
 
         {/* Tabbed Issues */}
-        <Tabs defaultValue="pending" className="flex flex-col gap-6 md:flex-row">
-          <TabsList className="w-full md:w-56 md:flex-col md:items-stretch md:gap-1 md:border-b-0 md:border-r md:pr-4 md:sticky md:top-24">
-            <TabsTrigger value="pending" className="justify-start">
-              Pending ({pendingIssues.length})
-            </TabsTrigger>
-            <TabsTrigger value="inprogress" className="justify-start">
-              In Progress ({inProgressIssues.length})
-            </TabsTrigger>
-            <TabsTrigger value="completed" className="justify-start">
-              Completed ({completedIssues.length})
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="justify-start">Notifications</TabsTrigger>
-            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
-            {escalatedIssues.length > 0 && (
-              <TabsTrigger value="escalated" className="justify-start text-red-600">
-                Escalated ({escalatedIssues.length})
-              </TabsTrigger>
-            )}
-          </TabsList>
 
-          <div className="flex-1 space-y-6">
             <TabsContent value="pending" className="space-y-3">
             <Card>
               <CardHeader>
-                <CardTitle>Pending Issues</CardTitle>
-                <CardDescription>New assignments awaiting your response.</CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <CardTitle>Pending Issues</CardTitle>
+                    <CardDescription>New assignments awaiting your response.</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => downloadCsv(
+                        `pending-issues-${companyId || 'all'}.csv`,
+                        [
+                          { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                          { label: 'Priority', value: (row: any) => row.priority },
+                          { label: 'Status', value: (row: any) => row.status },
+                          { label: 'Reported By', value: (row: any) => row.reportedBy?.name || '-' },
+                          { label: 'Created', value: (row: any) => row.createdAt || row.updatedAt || '-' },
+                        ] as ExportColumn<any>[],
+                        pendingIssues
+                      )}
+                    >
+                      Download CSV
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => printTable(
+                        'Pending Issues',
+                        [
+                          { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                          { label: 'Priority', value: (row: any) => row.priority },
+                          { label: 'Status', value: (row: any) => row.status },
+                          { label: 'Reported By', value: (row: any) => row.reportedBy?.name || '-' },
+                          { label: 'Created', value: (row: any) => row.createdAt || row.updatedAt || '-' },
+                        ] as ExportColumn<any>[],
+                        pendingIssues,
+                        `${issueStartDate || 'All'} to ${issueEndDate || 'All'}`
+                      )}
+                    >
+                      Print PDF
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -388,8 +505,47 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             <TabsContent value="inprogress" className="space-y-3">
             <Card>
               <CardHeader>
-                <CardTitle>Active Work</CardTitle>
-                <CardDescription>Issues currently in progress.</CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <CardTitle>Active Work</CardTitle>
+                    <CardDescription>Issues currently in progress.</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => downloadCsv(
+                        `in-progress-issues-${companyId || 'all'}.csv`,
+                        [
+                          { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                          { label: 'Status', value: (row: any) => row.status },
+                          { label: 'Contact', value: (row: any) => row.reportedBy?.contact || row.reportedBy?.name || '-' },
+                          { label: 'Updated', value: (row: any) => row.updatedAt || row.createdAt || '-' },
+                        ] as ExportColumn<any>[],
+                        inProgressIssues
+                      )}
+                    >
+                      Download CSV
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => printTable(
+                        'In Progress Issues',
+                        [
+                          { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                          { label: 'Status', value: (row: any) => row.status },
+                          { label: 'Contact', value: (row: any) => row.reportedBy?.contact || row.reportedBy?.name || '-' },
+                          { label: 'Updated', value: (row: any) => row.updatedAt || row.createdAt || '-' },
+                        ] as ExportColumn<any>[],
+                        inProgressIssues,
+                        `${issueStartDate || 'All'} to ${issueEndDate || 'All'}`
+                      )}
+                    >
+                      Print PDF
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -458,8 +614,47 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             <TabsContent value="completed" className="space-y-3">
             <Card>
               <CardHeader>
-                <CardTitle>Completed Issues</CardTitle>
-                <CardDescription>Closed work with feedback.</CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <CardTitle>Completed Issues</CardTitle>
+                    <CardDescription>Closed work with feedback.</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => downloadCsv(
+                        `completed-issues-${companyId || 'all'}.csv`,
+                        [
+                          { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                          { label: 'Status', value: (row: any) => row.status },
+                          { label: 'Rating', value: (row: any) => row.rating || '-' },
+                          { label: 'Completed', value: (row: any) => row.completedAt || row.updatedAt || '-' },
+                        ] as ExportColumn<any>[],
+                        completedIssues
+                      )}
+                    >
+                      Download CSV
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => printTable(
+                        'Completed Issues',
+                        [
+                          { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                          { label: 'Status', value: (row: any) => row.status },
+                          { label: 'Rating', value: (row: any) => row.rating || '-' },
+                          { label: 'Completed', value: (row: any) => row.completedAt || row.updatedAt || '-' },
+                        ] as ExportColumn<any>[],
+                        completedIssues,
+                        `${issueStartDate || 'All'} to ${issueEndDate || 'All'}`
+                      )}
+                    >
+                      Print PDF
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -505,8 +700,47 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
               <TabsContent value="escalated" className="space-y-3">
             <Card className="border-red-200">
               <CardHeader>
-                <CardTitle>Escalated Issues</CardTitle>
-                <CardDescription>Immediate attention required.</CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <CardTitle>Escalated Issues</CardTitle>
+                    <CardDescription>Immediate attention required.</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => downloadCsv(
+                        `escalated-issues-${companyId || 'all'}.csv`,
+                        [
+                          { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                          { label: 'Priority', value: (row: any) => row.priority },
+                          { label: 'Status', value: (row: any) => row.status },
+                          { label: 'Created', value: (row: any) => row.createdAt || row.updatedAt || '-' },
+                        ] as ExportColumn<any>[],
+                        escalatedIssues
+                      )}
+                    >
+                      Download CSV
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => printTable(
+                        'Escalated Issues',
+                        [
+                          { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                          { label: 'Priority', value: (row: any) => row.priority },
+                          { label: 'Status', value: (row: any) => row.status },
+                          { label: 'Created', value: (row: any) => row.createdAt || row.updatedAt || '-' },
+                        ] as ExportColumn<any>[],
+                        escalatedIssues,
+                        `${issueStartDate || 'All'} to ${issueEndDate || 'All'}`
+                      )}
+                    >
+                      Print PDF
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
