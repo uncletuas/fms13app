@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/ta
 import { ContactCard } from '@/app/components/contact-card';
 import { ActivityLog } from '@/app/components/activity-log';
 import { ProfileSettings } from '@/app/components/profile-settings';
+import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { Package, AlertCircle, LogOut, Plus, CheckCircle } from 'lucide-react';
@@ -365,6 +366,15 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     const matchesDate = inDateRange(contractor.createdAt, contractorStartDate, contractorEndDate);
     return matchesQuery && matchesDate;
   });
+  const avatarUrl = user?.avatarUrl || user?.avatar_url || user?.profile?.avatarUrl;
+  const initials = (user?.name || 'User')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part: string) => part[0])
+    .join('')
+    .toUpperCase();
 
   const totalEquipmentCount = Math.max(stats?.totalEquipment || 0, equipment.length);
 
@@ -373,9 +383,15 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">Facility Manager Dashboard</h1>
-            <p className="text-sm text-slate-500">Welcome, {user.name}</p>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+              <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-xl font-semibold text-slate-900">Facility Manager Dashboard</h1>
+              <p className="text-xs italic text-emerald-600">Welcome, {user.name}</p>
+            </div>
           </div>
           <div className="flex gap-2">
             {companyBindings.length > 1 && (
@@ -471,7 +487,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Issues</CardTitle>
-                    <CardDescription>Track and manage facility issues</CardDescription>
+                    <CardDescription className="text-xs italic text-emerald-600">Track and manage facility issues</CardDescription>
                   </div>
                   <Dialog open={isCreateIssueOpen} onOpenChange={setIsCreateIssueOpen}>
                     <DialogTrigger asChild>
@@ -771,7 +787,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Equipment</CardTitle>
-                    <CardDescription>Manage facility equipment</CardDescription>
+                    <CardDescription className="text-xs italic text-emerald-600">Manage facility equipment</CardDescription>
                   </div>
                   <Dialog open={isCreateEquipmentOpen} onOpenChange={setIsCreateEquipmentOpen}>
                     <DialogTrigger asChild>
@@ -1026,7 +1042,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             <Card>
               <CardHeader>
                 <CardTitle>Assigned Contractors</CardTitle>
-                <CardDescription>Contractors working on your facilities</CardDescription>
+                <CardDescription className="text-xs italic text-emerald-600">Contractors working on your facilities</CardDescription>
                 <div className="mt-4 flex flex-wrap items-end gap-3">
                   <div className="flex-1 min-w-[200px]">
                     <Label className="text-xs text-slate-500">Search</Label>

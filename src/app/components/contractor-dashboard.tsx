@@ -13,6 +13,7 @@ import { ActivityLog } from '@/app/components/activity-log';
 import { JobActionModal } from '@/app/components/job-action-modal';
 import { ProfileSettings } from '@/app/components/profile-settings';
 import { NotificationsPanel } from '@/app/components/notifications-panel';
+import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { Wrench, Clock, CheckCircle, AlertCircle, LogOut, Building2 } from 'lucide-react';
@@ -255,17 +256,32 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
       </div>
     </div>
   ) : null;
+  const avatarUrl = user?.avatarUrl || user?.avatar_url || user?.profile?.avatarUrl;
+  const initials = (user?.name || 'User')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part: string) => part[0])
+    .join('')
+    .toUpperCase();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">Contractor Dashboard</h1>
-            <p className="text-sm text-slate-500">
-              {companyId ? (company?.name || companyDirectory[companyId]?.name || 'Loading...') : 'Independent Contractor'} - {user.name}
-            </p>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+              <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-xl font-semibold text-slate-900">Contractor Dashboard</h1>
+              <p className="text-xs italic text-emerald-600">
+                {companyId ? (company?.name || companyDirectory[companyId]?.name || 'Loading...') : 'Independent Contractor'} - {user.name}
+              </p>
+            </div>
           </div>
           <div className="flex gap-2">
             {companyBindings.length > 0 && (
@@ -398,7 +414,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <CardTitle>Pending Issues</CardTitle>
-                    <CardDescription>New assignments awaiting your response.</CardDescription>
+                    <CardDescription className="text-xs italic text-emerald-600">New assignments awaiting your response.</CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -497,7 +513,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <CardTitle>Active Work</CardTitle>
-                    <CardDescription>Issues currently in progress.</CardDescription>
+                    <CardDescription className="text-xs italic text-emerald-600">Issues currently in progress.</CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -607,7 +623,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <CardTitle>Completed Issues</CardTitle>
-                    <CardDescription>Closed work with feedback.</CardDescription>
+                    <CardDescription className="text-xs italic text-emerald-600">Closed work with feedback.</CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -694,7 +710,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <CardTitle>Escalated Issues</CardTitle>
-                    <CardDescription>Immediate attention required.</CardDescription>
+                    <CardDescription className="text-xs italic text-emerald-600">Immediate attention required.</CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button

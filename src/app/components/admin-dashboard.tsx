@@ -12,6 +12,7 @@ import { ContactCard } from '@/app/components/contact-card';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { ActivityLog } from '@/app/components/activity-log';
 import { ProfileSettings } from '@/app/components/profile-settings';
+import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { Building2, Package, AlertCircle, Users, LogOut, Plus, UserPlus, Settings } from 'lucide-react';
@@ -438,15 +439,30 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     const matchesDate = inDateRange(contractor.createdAt, contractorStartDate, contractorEndDate);
     return matchesQuery && matchesDate;
   });
+  const avatarUrl = user?.avatarUrl || user?.avatar_url || user?.profile?.avatarUrl;
+  const initials = (user?.name || 'User')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part: string) => part[0])
+    .join('')
+    .toUpperCase();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">Company Admin Dashboard</h1>
-            <p className="text-sm text-slate-500">{company?.name || 'Loading...'} - {user.name}</p>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+              <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-xl font-semibold text-slate-900">Company Admin Dashboard</h1>
+              <p className="text-xs italic text-emerald-600">{company?.name || 'Loading...'} - {user.name}</p>
+            </div>
           </div>
           <div className="flex gap-2">
             {companyBindings.length > 1 && (
@@ -542,7 +558,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
               <Card>
                 <CardHeader>
                   <CardTitle>Recent Issues</CardTitle>
-                  <CardDescription>Latest reported issues</CardDescription>
+                  <CardDescription className="text-xs italic text-emerald-600">Latest reported issues</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -593,7 +609,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
               <Card>
                 <CardHeader>
                   <CardTitle>Equipment Health</CardTitle>
-                  <CardDescription>Equipment requiring attention</CardDescription>
+                  <CardDescription className="text-xs italic text-emerald-600">Equipment requiring attention</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -652,7 +668,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Facilities</CardTitle>
-                    <CardDescription>Manage company branches</CardDescription>
+                    <CardDescription className="text-xs italic text-emerald-600">Manage company branches</CardDescription>
                   </div>
                   <Dialog open={isCreateFacilityOpen} onOpenChange={setIsCreateFacilityOpen}>
                     <DialogTrigger asChild>
@@ -820,7 +836,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             <Card>
               <CardHeader>
                 <CardTitle>Equipment Registry</CardTitle>
-                <CardDescription>All equipment across facilities</CardDescription>
+                <CardDescription className="text-xs italic text-emerald-600">All equipment across facilities</CardDescription>
                 <div className="mt-4 flex flex-wrap items-end gap-3">
                   <div className="flex-1 min-w-[200px]">
                     <Label className="text-xs text-slate-500">Search</Label>
@@ -956,7 +972,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             <Card>
               <CardHeader>
                 <CardTitle>All Issues</CardTitle>
-                <CardDescription>Complete issue tracking</CardDescription>
+                <CardDescription className="text-xs italic text-emerald-600">Complete issue tracking</CardDescription>
                 <div className="mt-4 flex flex-wrap items-end gap-3">
                   <div className="flex-1 min-w-[220px]">
                     <Label className="text-xs text-slate-500">Search</Label>
@@ -1110,7 +1126,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle>Facility Managers</CardTitle>
-                      <CardDescription>Manage facility staff</CardDescription>
+                      <CardDescription className="text-xs italic text-emerald-600">Manage facility staff</CardDescription>
                     </div>
                     <Dialog open={isCreateFMOpen} onOpenChange={setIsCreateFMOpen}>
                       <DialogTrigger asChild>
@@ -1300,7 +1316,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle>Contractors</CardTitle>
-                      <CardDescription>Assigned contractors</CardDescription>
+                      <CardDescription className="text-xs italic text-emerald-600">Assigned contractors</CardDescription>
                     </div>
                     <Dialog open={isAssignContractorOpen} onOpenChange={setIsAssignContractorOpen}>
                       <DialogTrigger asChild>
