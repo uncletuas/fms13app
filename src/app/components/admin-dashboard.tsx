@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Badge } from '@/app/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { ContactCard } from '@/app/components/contact-card';
@@ -260,7 +261,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   };
 
   const handleRemoveContractor = async (contractorId: string) => {
-    const confirmRemove = window.confirm('Remove this contractor from your company?');
+    const confirmRemove = window.confirm('Remove this contractor from your company-');
     if (!confirmRemove) return;
 
     try {
@@ -356,23 +357,23 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
 
   const getPriorityBadge = (priority: string) => {
     const priorityConfig: Record<string, { label: string; className: string }> = {
-      high: { label: 'High', className: 'bg-red-500 text-white' },
-      medium: { label: 'Medium', className: 'bg-yellow-500 text-white' },
-      low: { label: 'Low', className: 'bg-green-500 text-white' },
+      high: { label: 'High', className: 'bg-red-100 text-red-700' },
+      medium: { label: 'Medium', className: 'bg-yellow-100 text-yellow-700' },
+      low: { label: 'Low', className: 'bg-emerald-100 text-emerald-700' },
     };
 
-    const config = priorityConfig[priority] || { label: priority, className: 'bg-gray-500 text-white' };
+    const config = priorityConfig[priority] || { label: priority, className: 'bg-slate-100 text-slate-700' };
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Company Admin Dashboard</h1>
-            <p className="text-sm text-gray-500">{company?.name || 'Loading...'} - {user.name}</p>
+            <h1 className="text-xl font-semibold text-slate-900">Company Admin Dashboard</h1>
+            <p className="text-sm text-slate-500">{company?.name || 'Loading...'} - {user.name}</p>
           </div>
           <div className="flex gap-2">
             {companyBindings.length > 1 && (
@@ -419,9 +420,9 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalEquipment || 0}</div>
               <div className="text-xs text-gray-500 mt-1">
-                <span className="text-green-600">●</span> {stats?.healthyEquipment || 0} Healthy
-                <span className="text-yellow-600 ml-2">●</span> {stats?.concerningEquipment || 0} Warning
-                <span className="text-red-600 ml-2">●</span> {stats?.criticalEquipment || 0} Critical
+                <span className="text-green-600">o</span> {stats?.healthyEquipment || 0} Healthy
+                <span className="text-yellow-600 ml-2">o</span> {stats?.concerningEquipment || 0} Warning
+                <span className="text-red-600 ml-2">o</span> {stats?.criticalEquipment || 0} Critical
               </div>
             </CardContent>
           </Card>
@@ -450,17 +451,18 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
         </div>
 
         {/* Tabbed Content */}
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="facilities">Facilities</TabsTrigger>
-            <TabsTrigger value="equipment">Equipment</TabsTrigger>
-            <TabsTrigger value="issues">Issues</TabsTrigger>
-            <TabsTrigger value="team">Team</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+        <Tabs defaultValue="overview" className="flex flex-col gap-6 md:flex-row">
+          <TabsList className="w-full md:w-56 md:flex-col md:items-stretch md:gap-1 md:border-b-0 md:border-r md:pr-4 md:sticky md:top-24">
+            <TabsTrigger value="overview" className="justify-start">Overview</TabsTrigger>
+            <TabsTrigger value="facilities" className="justify-start">Facilities</TabsTrigger>
+            <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
+            <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
+            <TabsTrigger value="team" className="justify-start">Team</TabsTrigger>
+            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-4">
+          <div className="flex-1 space-y-6">
+            <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Issues */}
               <Card>
@@ -469,33 +471,47 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   <CardDescription>Latest reported issues</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {issues.length === 0 ? (
-                      <p className="text-sm text-gray-500 text-center py-4">No issues reported</p>
-                    ) : (
-                      issues.slice(0, 5).map((issue) => (
-                        <div 
-                          key={issue.id} 
-                          className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50"
-                          onClick={() => setSelectedIssue(issue)}
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="font-medium text-sm">{issue.equipmentName}</div>
-                            <div className="flex gap-2">
-                              {getPriorityBadge(issue.priority)}
-                              {getStatusBadge(issue.status)}
-                            </div>
-                          </div>
-                          <p className="text-xs text-gray-600 mb-2">{issue.description}</p>
-                          {issue.reportedBy && (
-                            <div className="text-xs text-gray-500">
-                              Reported by: <span className="font-medium">{issue.reportedBy.name}</span> ({issue.reportedBy.role})
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Issue</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Reported By</TableHead>
+                        <TableHead>Created</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {issues.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-sm text-slate-500">
+                            No issues reported
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        issues.slice(0, 5).map((issue) => (
+                          <TableRow
+                            key={issue.id}
+                            className="cursor-pointer"
+                            onClick={() => setSelectedIssue(issue)}
+                          >
+                            <TableCell>
+                              <div className="font-medium text-slate-900">{issue.equipmentName}</div>
+                              <div className="text-xs text-slate-500">{issue.description}</div>
+                            </TableCell>
+                            <TableCell>{getPriorityBadge(issue.priority)}</TableCell>
+                            <TableCell>{getStatusBadge(issue.status)}</TableCell>
+                            <TableCell className="text-sm text-slate-600">
+                              {issue.reportedBy ? issue.reportedBy.name : '-'}
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-500">
+                              {new Date(issue.createdAt).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
 
@@ -506,41 +522,57 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   <CardDescription>Equipment requiring attention</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {equipment.filter(eq => eq.healthStatus !== 'green').length === 0 ? (
-                      <p className="text-sm text-gray-500 text-center py-4">All equipment healthy</p>
-                    ) : (
-                      equipment.filter(eq => eq.healthStatus !== 'green').slice(0, 5).map((eq) => (
-                        <div 
-                          key={eq.id} 
-                          className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50"
-                          onClick={() => setSelectedEquipment(eq)}
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <div className="font-medium text-sm">{eq.name}</div>
-                              <div className="text-xs text-gray-500">{eq.category}</div>
-                            </div>
-                            <div className={`w-3 h-3 rounded-full ${
-                              eq.healthStatus === 'red' ? 'bg-red-500' :
-                              eq.healthStatus === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'
-                            }`} />
-                          </div>
-                          {eq.recordedBy && (
-                            <div className="text-xs text-gray-500">
-                              Recorded by: <span className="font-medium">{eq.recordedBy.name}</span>
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Equipment</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Condition</TableHead>
+                        <TableHead>Recorded By</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {equipment.filter(eq => eq.healthStatus !== 'green').length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                            All equipment healthy
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        equipment.filter(eq => eq.healthStatus !== 'green').slice(0, 5).map((eq) => (
+                          <TableRow
+                            key={eq.id}
+                            className="cursor-pointer"
+                            onClick={() => setSelectedEquipment(eq)}
+                          >
+                            <TableCell>
+                              <div className="font-medium text-slate-900">{eq.name}</div>
+                              <div className="text-xs text-slate-500">{eq.category}</div>
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-600">{eq.location || eq.facilityName || '-'}</TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center gap-2 text-xs text-slate-600">
+                                <span className={`h-2.5 w-2.5 rounded-full ${
+                                  eq.healthStatus === 'red' ? 'bg-red-500' :
+                                  eq.healthStatus === 'yellow' ? 'bg-yellow-400' : 'bg-emerald-500'
+                                }`} />
+                                {eq.healthStatus === 'red' ? 'Critical' : eq.healthStatus === 'yellow' ? 'Concerning' : 'Good'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-600">
+                              {eq.recordedBy?.name || '-'}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
-          <TabsContent value="facilities" className="space-y-4">
+            <TabsContent value="facilities" className="space-y-4">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -607,138 +639,158 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {facilities.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">No facilities yet</p>
-                  ) : (
-                    facilities.map((facility) => (
-                      <div key={facility.id} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <div className="font-semibold text-lg">{facility.name}</div>
-                            <div className="text-sm text-gray-600">{facility.location}</div>
-                            {facility.address && <div className="text-xs text-gray-500 mt-1">{facility.address}</div>}
-                          </div>
-                          <Badge>{facility.id}</Badge>
-                        </div>
-                        {facility.createdBy && (
-                          <div className="mt-3 pt-3 border-t">
-                            <ContactCard 
-                              name={facility.createdBy.name}
-                              role={facility.createdBy.role}
-                              branch={facility.createdBy.branch || facility.name}
-                              contact={facility.createdBy.contact}
-                              compact
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Facility</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Created By</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {facilities.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                          No facilities yet
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      facilities.map((facility) => (
+                        <TableRow key={facility.id}>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{facility.name}</div>
+                            {facility.address && (
+                              <div className="text-xs text-slate-500">{facility.address}</div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-600">{facility.location || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{facility.id}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-600">
+                            {facility.createdBy?.name || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="equipment" className="space-y-4">
+            <TabsContent value="equipment" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Equipment Registry</CardTitle>
                 <CardDescription>All equipment across facilities</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {equipment.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">No equipment registered</p>
-                  ) : (
-                    equipment.map((eq) => (
-                      <div 
-                        key={eq.id} 
-                        className="border rounded-lg p-4 cursor-pointer hover:bg-gray-50"
-                        onClick={() => setSelectedEquipment(eq)}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <div className="font-semibold">{eq.name}</div>
-                            <div className="text-sm text-gray-600">{eq.category} - {eq.brand} {eq.model}</div>
-                          </div>
-                          <div className={`w-4 h-4 rounded-full ${
-                            eq.healthStatus === 'red' ? 'bg-red-500' :
-                            eq.healthStatus === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'
-                          }`} />
-                        </div>
-                        {eq.recordedBy && (
-                          <div className="mt-3 pt-3 border-t">
-                            <p className="text-xs text-gray-500 mb-2">Recorded by:</p>
-                            <ContactCard 
-                              name={eq.recordedBy.name}
-                              role={eq.recordedBy.role}
-                              branch={eq.recordedBy.branch}
-                              contact={eq.recordedBy.contact}
-                              compact
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Equipment</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Health</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Recorded By</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {equipment.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-sm text-slate-500">
+                          No equipment registered
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      equipment.map((eq) => (
+                        <TableRow
+                          key={eq.id}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedEquipment(eq)}
+                        >
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{eq.name}</div>
+                            <div className="text-xs text-slate-500">
+                              {eq.brand || '-'} {eq.model || ''}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-600">{eq.category || '-'}</TableCell>
+                          <TableCell>
+                            <span className="inline-flex items-center gap-2 text-xs text-slate-600">
+                              <span className={`h-2.5 w-2.5 rounded-full ${
+                                eq.healthStatus === 'red' ? 'bg-red-500' :
+                                eq.healthStatus === 'yellow' ? 'bg-yellow-400' : 'bg-emerald-500'
+                              }`} />
+                              {eq.healthStatus === 'red' ? 'Critical' : eq.healthStatus === 'yellow' ? 'Concerning' : 'Good'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-600">{eq.location || '-'}</TableCell>
+                          <TableCell className="text-sm text-slate-600">{eq.recordedBy?.name || '-'}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="issues" className="space-y-4">
+            <TabsContent value="issues" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>All Issues</CardTitle>
                 <CardDescription>Complete issue tracking</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {issues.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">No issues reported</p>
-                  ) : (
-                    issues.map((issue) => (
-                      <div 
-                        key={issue.id} 
-                        className="border rounded-lg p-4 cursor-pointer hover:bg-gray-50"
-                        onClick={() => setSelectedIssue(issue)}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="font-medium">{issue.equipmentName}</div>
-                          <div className="flex gap-2">
-                            {getPriorityBadge(issue.priority)}
-                            {getStatusBadge(issue.status)}
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">{issue.description}</p>
-                        
-                        {issue.reportedBy && (
-                          <div className="mb-3">
-                            <p className="text-xs text-gray-500 mb-2">Reported by:</p>
-                            <ContactCard 
-                              name={issue.reportedBy.name}
-                              role={issue.reportedBy.role}
-                              branch={issue.reportedBy.branch}
-                              contact={issue.reportedBy.contact}
-                              compact
-                            />
-                          </div>
-                        )}
-                        
-                        <div className="text-xs text-gray-400 flex items-center justify-between pt-2 border-t">
-                          <span>Issue ID: {issue.id}</span>
-                          <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Issue</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Reported By</TableHead>
+                      <TableHead>Updated</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {issues.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-sm text-slate-500">
+                          No issues reported
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      issues.map((issue) => (
+                        <TableRow
+                          key={issue.id}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedIssue(issue)}
+                        >
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{issue.equipmentName}</div>
+                            <div className="text-xs text-slate-500">{issue.description}</div>
+                          </TableCell>
+                          <TableCell>{getPriorityBadge(issue.priority)}</TableCell>
+                          <TableCell>{getStatusBadge(issue.status)}</TableCell>
+                          <TableCell className="text-sm text-slate-600">
+                            {issue.reportedBy?.name || '-'}
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-500">
+                            {new Date(issue.updatedAt || issue.createdAt).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="team" className="space-y-4">
+            <TabsContent value="team" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Facility Managers */}
               <Card>
@@ -825,21 +877,46 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {companyUsers.filter(u => u.role === 'facility_manager').map((fm) => (
-                      <div key={fm.id} className="border rounded-lg p-3 space-y-3">
-                        <ContactCard 
-                          name={fm.name}
-                          role={fm.role}
-                          contact={{ phone: fm.phone, email: fm.email }}
-                          compact
-                        />
-                        <Button size="sm" variant="outline" onClick={() => openEditFacilityManager(fm)}>
-                          Edit Profile
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Facilities</TableHead>
+                        <TableHead>Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {companyUsers.filter(u => u.role === 'facility_manager').length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                            No facility managers yet
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        companyUsers.filter(u => u.role === 'facility_manager').map((fm) => (
+                          <TableRow key={fm.id}>
+                            <TableCell>
+                              <div className="font-medium text-slate-900">{fm.name}</div>
+                              <div className="text-xs text-slate-500">{fm.role}</div>
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-600">
+                              <div>{fm.email || '-'}</div>
+                              <div className="text-xs text-slate-500">{fm.phone || '-'}</div>
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-600">
+                              {fm.facilityIds?.length ? `${fm.facilityIds.length} assigned` : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="outline" onClick={() => openEditFacilityManager(fm)}>
+                                Edit Profile
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
 
@@ -882,38 +959,60 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {contractors.length === 0 ? (
-                      <p className="text-sm text-gray-500 text-center py-4">No contractors assigned</p>
-                    ) : (
-                      contractors.map((contractor) => (
-                        <div key={contractor.id} className="border rounded-lg p-3 space-y-3">
-                          <ContactCard 
-                            name={contractor.name}
-                            role="contractor"
-                            contact={{ phone: contractor.phone, email: contractor.email }}
-                            compact
-                          />
-                          <Button size="sm" variant="destructive" onClick={() => handleRemoveContractor(contractor.id)}>
-                            Remove Contractor
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Specialization</TableHead>
+                        <TableHead>Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {contractors.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                            No contractors assigned
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        contractors.map((contractor) => (
+                          <TableRow key={contractor.id}>
+                            <TableCell>
+                              <div className="font-medium text-slate-900">{contractor.name}</div>
+                              <div className="text-xs text-slate-500">Contractor</div>
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-600">
+                              <div>{contractor.email || '-'}</div>
+                              <div className="text-xs text-slate-500">{contractor.phone || '-'}</div>
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-600">
+                              {contractor.specialization || contractor.skillso.join(', ') || '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="destructive" onClick={() => handleRemoveContractor(contractor.id)}>
+                                Remove
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
-          <TabsContent value="profile">
-            <ProfileSettings
-              user={user}
-              role="company_admin"
-              accessToken={accessToken}
-              onProfileUpdated={onProfileUpdate}
-            />
-          </TabsContent>
+            <TabsContent value="profile">
+              <ProfileSettings
+                user={user}
+                role="company_admin"
+                accessToken={accessToken}
+                onProfileUpdated={onProfileUpdate}
+              />
+            </TabsContent>
+          </div>
         </Tabs>
       </main>
 

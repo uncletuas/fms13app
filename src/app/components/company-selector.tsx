@@ -46,16 +46,7 @@ export function CompanySelector({ companyBindings, accessToken, onSelectCompany,
   };
 
   const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'company_admin':
-        return 'bg-purple-600 text-white';
-      case 'facility_manager':
-        return 'bg-blue-600 text-white';
-      case 'contractor':
-        return 'bg-green-600 text-white';
-      default:
-        return 'bg-gray-600 text-white';
-    }
+    return 'bg-primary/10 text-primary border border-primary/20';
   };
 
   const getRoleLabel = (role: string) => {
@@ -80,12 +71,12 @@ export function CompanySelector({ companyBindings, accessToken, onSelectCompany,
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Select Company</h1>
-            <p className="text-gray-600 mt-2">Choose a company to access its dashboard</p>
+            <h1 className="text-2xl font-semibold text-slate-900">Select Company</h1>
+            <p className="text-slate-600 mt-2">Choose a company to access its dashboard</p>
           </div>
           <Button variant="outline" onClick={onLogout}>
             <LogOut className="w-4 h-4 mr-2" />
@@ -100,14 +91,14 @@ export function CompanySelector({ companyBindings, accessToken, onSelectCompany,
             return (
               <Card 
                 key={binding.companyId}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
+                className="cursor-pointer transition-colors hover:bg-accent/40"
                 onClick={() => onSelectCompany(binding.companyId)}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Building2 className="w-6 h-6 text-blue-600" />
+                      <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+                        <Building2 className="w-6 h-6 text-primary" />
                       </div>
                       <div>
                         <CardTitle className="text-xl">{company?.name || 'Loading...'}</CardTitle>

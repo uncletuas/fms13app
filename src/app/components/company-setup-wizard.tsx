@@ -176,30 +176,30 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
               <Building2 className="w-7 h-7 text-white" />
             </div>
             <div>
-              <CardTitle className="text-2xl font-bold">Welcome to FMS.13</CardTitle>
+              <CardTitle className="text-2xl font-semibold">Welcome to FMS.13</CardTitle>
               <CardDescription>Let's set up your facility management system</CardDescription>
             </div>
           </div>
           
           {/* Progress Steps */}
           <div className="flex items-center gap-2 mt-6">
-            <div className={`flex items-center gap-2 ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+            <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary' : 'text-slate-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-primary text-white' : 'bg-slate-200'}`}>
                 {step > 1 ? <Check className="w-5 h-5" /> : '1'}
               </div>
               <span className="text-sm font-medium">Company Details</span>
             </div>
-            <ArrowRight className="w-4 h-4 text-gray-400" />
-            <div className={`flex items-center gap-2 ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+            <ArrowRight className="w-4 h-4 text-slate-400" />
+            <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary' : 'text-slate-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-primary text-white' : 'bg-slate-200'}`}>
                 2
               </div>
               <span className="text-sm font-medium">Complete Setup</span>

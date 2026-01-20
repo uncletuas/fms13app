@@ -206,7 +206,7 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
             {decision === 'accepted' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="proposedCost">Proposed Cost (₦)</Label>
+                  <Label htmlFor="proposedCost">Proposed Cost (NGN)</Label>
                   <Input
                     id="proposedCost"
                     type="number"
@@ -316,7 +316,7 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="finalCost">Final Cost (₦) *</Label>
+            <Label htmlFor="finalCost">Final Cost (NGN) *</Label>
             <Input
               id="finalCost"
               type="number"

@@ -7,6 +7,7 @@ import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Badge } from '@/app/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ContactCard } from '@/app/components/contact-card';
 import { ActivityLog } from '@/app/components/activity-log';
@@ -286,23 +287,23 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
 
   const getPriorityBadge = (priority: string) => {
     const priorityConfig: Record<string, { label: string; className: string }> = {
-      high: { label: 'High', className: 'bg-red-500 text-white' },
-      medium: { label: 'Medium', className: 'bg-yellow-500 text-white' },
-      low: { label: 'Low', className: 'bg-green-500 text-white' },
+      high: { label: 'High', className: 'bg-red-100 text-red-700' },
+      medium: { label: 'Medium', className: 'bg-yellow-100 text-yellow-700' },
+      low: { label: 'Low', className: 'bg-emerald-100 text-emerald-700' },
     };
 
-    const config = priorityConfig[priority] || { label: priority, className: 'bg-gray-500 text-white' };
+    const config = priorityConfig[priority] || { label: priority, className: 'bg-slate-100 text-slate-700' };
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
   const getContractorName = (contractorId: string | null) => {
     if (!contractorId) return 'Unassigned';
     const contractor = contractors.find((item) => item.id === contractorId);
-    return contractor?.name || contractorId;
+    return contractoro.name || contractorId;
   };
 
-  const renderAttachmentList = (attachments?: any[]) => {
-    if (!attachments?.length) return null;
+  const renderAttachmentList = (attachmentso: any[]) => {
+    if (!attachmentso.length) return null;
     return (
       <div className="mt-2 space-y-1">
         {attachments.map((file, index) => (
@@ -323,13 +324,13 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   const totalEquipmentCount = Math.max(stats?.totalEquipment || 0, equipment.length);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Facility Manager Dashboard</h1>
-            <p className="text-sm text-gray-500">Welcome, {user.name}</p>
+            <h1 className="text-xl font-semibold text-slate-900">Facility Manager Dashboard</h1>
+            <p className="text-sm text-slate-500">Welcome, {user.name}</p>
           </div>
           <div className="flex gap-2">
             {companyBindings.length > 1 && (
@@ -366,9 +367,9 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             <CardContent>
               <div className="text-2xl font-bold">{totalEquipmentCount}</div>
               <div className="text-xs text-gray-500 mt-1">
-                <span className="text-green-600">●</span> {stats?.healthyEquipment || 0} Healthy
-                <span className="text-yellow-600 ml-2">●</span> {stats?.concerningEquipment || 0} Warning
-                <span className="text-red-600 ml-2">●</span> {stats?.criticalEquipment || 0} Critical
+                <span className="text-green-600">o</span> {stats?.healthyEquipment || 0} Healthy
+                <span className="text-yellow-600 ml-2">o</span> {stats?.concerningEquipment || 0} Warning
+                <span className="text-red-600 ml-2">o</span> {stats?.criticalEquipment || 0} Critical
               </div>
             </CardContent>
           </Card>
@@ -409,15 +410,16 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
         </div>
 
         {/* Tabbed Content */}
-        <Tabs defaultValue="issues" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="issues">Issues</TabsTrigger>
-            <TabsTrigger value="equipment">Equipment</TabsTrigger>
-            <TabsTrigger value="contractors">Contractors</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+        <Tabs defaultValue="issues" className="flex flex-col gap-6 md:flex-row">
+          <TabsList className="w-full md:w-56 md:flex-col md:items-stretch md:gap-1 md:border-b-0 md:border-r md:pr-4 md:sticky md:top-24">
+            <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
+            <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
+            <TabsTrigger value="contractors" className="justify-start">Contractors</TabsTrigger>
+            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="issues" className="space-y-4">
+          <div className="flex-1 space-y-6">
+            <TabsContent value="issues" className="space-y-4">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -540,107 +542,87 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {issues.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">No issues reported</p>
-                  ) : (
-                    issues.map((issue) => (
-                      <div 
-                        key={issue.id} 
-                        className="border rounded-lg p-4 cursor-pointer hover:bg-gray-50"
-                        onClick={() => setSelectedIssue(issue)}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="font-medium">{issue.equipmentName}</div>
-                          <div className="flex gap-2">
-                            {getPriorityBadge(issue.priority)}
-                            {getStatusBadge(issue.status)}
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">{issue.description}</p>
-                        
-                        {issue.reportedBy && (
-                          <div className="mb-2">
-                            <p className="text-xs text-gray-500 mb-1">Reported by:</p>
-                            <div className="text-xs">
-                              <span className="font-medium">{issue.reportedBy.name}</span> ({issue.reportedBy.role})
-                              {issue.reportedBy.contact?.phone && (
-                                <span className="text-gray-500"> • {issue.reportedBy.contact.phone}</span>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Issue</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Assigned</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {issues.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-sm text-slate-500">
+                          No issues reported
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      issues.map((issue) => (
+                        <TableRow
+                          key={issue.id}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedIssue(issue)}
+                        >
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{issue.equipmentName}</div>
+                            <div className="text-xs text-slate-500">{issue.description}</div>
+                            <div className="text-xs text-slate-400">ID: {issue.id}</div>
+                          </TableCell>
+                          <TableCell>{getPriorityBadge(issue.priority)}</TableCell>
+                          <TableCell>{getStatusBadge(issue.status)}</TableCell>
+                          <TableCell className="text-sm text-slate-600">
+                            {issue.assignedTo ? getContractorName(issue.assignedTo) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                              {!issue.assignedTo && issue.status === 'created' && (
+                                <Select onValueChange={(contractorId) => handleAssignContractor(issue.id, contractorId)}>
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Assign contractor" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {contractors.map((contractor) => (
+                                      <SelectItem key={contractor.id} value={contractor.id}>
+                                        {contractor.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                              {issue.assignedTo && !['completed', 'approved', 'closed'].includes(issue.status) && (
+                                <Select value={issue.assignedTo} onValueChange={(contractorId) => handleAssignContractor(issue.id, contractorId)}>
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Change contractor" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {contractors.map((contractor) => (
+                                      <SelectItem key={contractor.id} value={contractor.id}>
+                                        {contractor.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                              {issue.status === 'completed' && (
+                                <Button size="sm" onClick={() => setSelectedIssue(issue)}>
+                                  Review & Approve
+                                </Button>
                               )}
                             </div>
-                          </div>
-                        )}
-                        
-                        {issue.assignedTo && (
-                          <div className="text-xs text-gray-500 mb-2">
-                            Assigned to: <span className="font-medium">{getContractorName(issue.assignedTo)}</span>
-                          </div>
-                        )}
-
-                        {!issue.assignedTo && issue.status === 'created' && (
-                          <div className="mt-3 pt-3 border-t">
-                            <Label className="text-xs">Assign Contractor:</Label>
-                            <Select onValueChange={(contractorId) => handleAssignContractor(issue.id, contractorId)}>
-                              <SelectTrigger className="mt-1">
-                                <SelectValue placeholder="Select contractor" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {contractors.map((contractor) => (
-                                  <SelectItem key={contractor.id} value={contractor.id}>
-                                    {contractor.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                        
-                        {issue.assignedTo && !['completed', 'approved', 'closed'].includes(issue.status) && (
-                          <div className="mt-3 pt-3 border-t">
-                            <Label className="text-xs">Change Contractor:</Label>
-                            <Select value={issue.assignedTo} onValueChange={(contractorId) => handleAssignContractor(issue.id, contractorId)}>
-                              <SelectTrigger className="mt-1">
-                                <SelectValue placeholder="Select contractor" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {contractors.map((contractor) => (
-                                  <SelectItem key={contractor.id} value={contractor.id}>
-                                    {contractor.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-
-                        {issue.status === 'completed' && (
-                          <div className="mt-3 pt-3 border-t">
-                            <Button 
-                              size="sm" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedIssue(issue);
-                              }}
-                              className="w-full"
-                            >
-                              Review & Approve
-                            </Button>
-                          </div>
-                        )}
-                        
-                        <div className="text-xs text-gray-400 mt-2 pt-2 border-t flex items-center justify-between">
-                          <span>Issue ID: {issue.id}</span>
-                          <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+</CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="equipment" className="space-y-4">
+            <TabsContent value="equipment" className="space-y-4">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -768,74 +750,109 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {equipment.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">No equipment registered</p>
-                  ) : (
-                    equipment.map((eq) => (
-                      <div 
-                        key={eq.id} 
-                        className="border rounded-lg p-4 cursor-pointer hover:bg-gray-50"
-                        onClick={() => setSelectedEquipment(eq)}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <div className="font-semibold">{eq.name}</div>
-                            <div className="text-sm text-gray-600">{eq.category} - {eq.brand} {eq.model}</div>
-                          </div>
-                          <div className={`w-4 h-4 rounded-full ${
-                            eq.healthStatus === 'red' ? 'bg-red-500' :
-                            eq.healthStatus === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'
-                          }`} />
-                        </div>
-                        {eq.recordedBy && (
-                          <div className="mt-3 pt-3 border-t text-xs text-gray-500">
-                            Recorded by: <span className="font-medium">{eq.recordedBy.name}</span> ({eq.recordedBy.role})
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Equipment</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Health</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Recorded By</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {equipment.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-sm text-slate-500">
+                          No equipment registered
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      equipment.map((eq) => (
+                        <TableRow
+                          key={eq.id}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedEquipment(eq)}
+                        >
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{eq.name}</div>
+                            <div className="text-xs text-slate-500">{eq.brand || '-'} {eq.model || ''}</div>
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-600">{eq.category || '-'}</TableCell>
+                          <TableCell>
+                            <span className="inline-flex items-center gap-2 text-xs text-slate-600">
+                              <span className={`h-2.5 w-2.5 rounded-full ${
+                                eq.healthStatus === 'red' ? 'bg-red-500' :
+                                eq.healthStatus === 'yellow' ? 'bg-yellow-400' : 'bg-emerald-500'
+                              }`} />
+                              {eq.healthStatus === 'red' ? 'Critical' : eq.healthStatus === 'yellow' ? 'Concerning' : 'Good'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-600">{eq.location || '-'}</TableCell>
+                          <TableCell className="text-sm text-slate-600">{eq.recordedBy?.name || '-'}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+</CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="contractors" className="space-y-4">
+            <TabsContent value="contractors" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Assigned Contractors</CardTitle>
                 <CardDescription>Contractors working on your facilities</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {contractors.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">No contractors assigned</p>
-                  ) : (
-                    contractors.map((contractor) => (
-                      <div key={contractor.id} className="border rounded-lg p-3">
-                        <ContactCard 
-                          name={contractor.name}
-                          role="contractor"
-                          contact={{ phone: contractor.phone, email: contractor.email }}
-                          compact
-                        />
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Specialization</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {contractors.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-sm text-slate-500">
+                          No contractors assigned
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      contractors.map((contractor) => (
+                        <TableRow key={contractor.id}>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{contractor.name}</div>
+                            <div className="text-xs text-slate-500">Contractor</div>
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-600">
+                            <div>{contractor.email || '-'}</div>
+                            <div className="text-xs text-slate-500">{contractor.phone || '-'}</div>
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-600">
+                            {contractor.specialization || contractor.skillso.join(', ') || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+</CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="profile">
-            <ProfileSettings
-              user={user}
-              role={activeRole}
-              accessToken={accessToken}
-              onProfileUpdated={onProfileUpdate}
-            />
-          </TabsContent>
+            <TabsContent value="profile">
+              <ProfileSettings
+                user={user}
+                role={activeRole}
+                accessToken={accessToken}
+                onProfileUpdated={onProfileUpdate}
+              />
+            </TabsContent>
+          </div>
         </Tabs>
       </main>
 
@@ -895,7 +912,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                     )}
                   </div>
                   {renderAttachmentList(selectedIssue.completion.reportAttachments)}
-                  {selectedIssue.completion.proofDocuments?.length > 0 && (
+                  {selectedIssue.completion.proofDocumentso.length > 0 && (
                     <div className="mt-2 space-y-1">
                       {selectedIssue.completion.proofDocuments.map((doc: string, index: number) => (
                         <a

@@ -83,7 +83,7 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-lg">Loading invitations...</div>
       </div>
     );
@@ -91,11 +91,11 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
 
   if (invitations.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
                 <Building2 className="w-7 h-7 text-white" />
               </div>
               <div>
@@ -105,7 +105,7 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600 mb-4">
+            <p className="text-slate-600 mb-4">
               You are registered as a contractor but haven't been assigned to any companies yet. 
               Company administrators can invite you using your Contractor ID:
             </p>
@@ -123,13 +123,13 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-background p-4">
       <div className="max-w-3xl mx-auto py-8">
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
                   <Building2 className="w-7 h-7 text-white" />
                 </div>
                 <div>

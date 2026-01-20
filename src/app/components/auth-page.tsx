@@ -232,44 +232,44 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
+    <div className="min-h-screen bg-background text-slate-900">
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10 lg:grid-cols-[1.1fr,1fr] lg:items-center">
         <div className="space-y-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10">
-              <Building2 className="h-7 w-7 text-white" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-white">
+              <Building2 className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-white/60">FMS.13</p>
-              <h1 className="text-3xl font-semibold text-white">Facility Management System</h1>
+              <p className="text-sm uppercase tracking-[0.3em] text-slate-500">FMS.13</p>
+              <h1 className="text-3xl font-semibold text-slate-900">Facility Management System</h1>
             </div>
           </div>
 
-          <p className="text-lg text-white/80">
+          <p className="text-lg text-slate-600">
             Operate every branch with security, audit trails, and fast contractor response. 
             Built for multi-tenant operations with zero implicit access.
           </p>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <ShieldCheck className="h-5 w-5 text-emerald-300" />
-              <p className="mt-3 text-sm font-medium">Zero implicit access</p>
-              <p className="mt-2 text-xs text-white/60">Invitation + approval enforced</p>
+            <div className="rounded-lg border border-border/80 bg-white p-4">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <p className="mt-3 text-sm font-medium text-slate-900">Zero implicit access</p>
+              <p className="mt-2 text-xs text-slate-500">Invitation + approval enforced</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <Users className="h-5 w-5 text-sky-300" />
-              <p className="mt-3 text-sm font-medium">Multi-branch control</p>
-              <p className="mt-2 text-xs text-white/60">Company, facilities, roles</p>
+            <div className="rounded-lg border border-border/80 bg-white p-4">
+              <Users className="h-5 w-5 text-primary" />
+              <p className="mt-3 text-sm font-medium text-slate-900">Multi-branch control</p>
+              <p className="mt-2 text-xs text-slate-500">Company, facilities, roles</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <Wrench className="h-5 w-5 text-amber-300" />
-              <p className="mt-3 text-sm font-medium">Contractor workflows</p>
-              <p className="mt-2 text-xs text-white/60">Accept, execute, report</p>
+            <div className="rounded-lg border border-border/80 bg-white p-4">
+              <Wrench className="h-5 w-5 text-primary" />
+              <p className="mt-3 text-sm font-medium text-slate-900">Contractor workflows</p>
+              <p className="mt-2 text-xs text-slate-500">Accept, execute, report</p>
             </div>
           </div>
         </div>
 
-        <Card className="border-white/10 bg-white/95 text-slate-900 shadow-2xl">
+        <Card className="border-border/80 bg-white text-slate-900 shadow-none">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold">Secure Access</CardTitle>
             <CardDescription>Sign in or register with the correct role.</CardDescription>

@@ -3,6 +3,7 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Badge } from '@/app/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ContactCard } from '@/app/components/contact-card';
@@ -166,11 +167,11 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
 
   const getPriorityBadge = (priority: string) => {
     const priorityConfig: Record<string, { label: string; className: string }> = {
-      high: { label: 'High', className: 'bg-red-500 text-white' },
-      medium: { label: 'Medium', className: 'bg-yellow-500 text-white' },
-      low: { label: 'Low', className: 'bg-green-500 text-white' },
+      high: { label: 'High', className: 'bg-red-100 text-red-700' },
+      medium: { label: 'Medium', className: 'bg-yellow-100 text-yellow-700' },
+      low: { label: 'Low', className: 'bg-emerald-100 text-emerald-700' },
     };
-    const config = priorityConfig[priority] || { label: priority, className: 'bg-gray-500 text-white' };
+    const config = priorityConfig[priority] || { label: priority, className: 'bg-slate-100 text-slate-700' };
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -193,13 +194,13 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   const escalatedIssues = sortedIssues.filter(i => i.status === 'escalated');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Contractor Dashboard</h1>
-            <p className="text-sm text-gray-500">
+            <h1 className="text-xl font-semibold text-slate-900">Contractor Dashboard</h1>
+            <p className="text-sm text-slate-500">
               {companyId ? (company?.name || companyDirectory[companyId]?.name || 'Loading...') : 'Independent Contractor'} - {user.name}
             </p>
           </div>
@@ -306,291 +307,259 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
         )}
 
         {/* Tabbed Issues */}
-        <Tabs defaultValue="pending" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="pending">
+        <Tabs defaultValue="pending" className="flex flex-col gap-6 md:flex-row">
+          <TabsList className="w-full md:w-56 md:flex-col md:items-stretch md:gap-1 md:border-b-0 md:border-r md:pr-4 md:sticky md:top-24">
+            <TabsTrigger value="pending" className="justify-start">
               Pending ({pendingIssues.length})
             </TabsTrigger>
-            <TabsTrigger value="inprogress">
+            <TabsTrigger value="inprogress" className="justify-start">
               In Progress ({inProgressIssues.length})
             </TabsTrigger>
-            <TabsTrigger value="completed">
+            <TabsTrigger value="completed" className="justify-start">
               Completed ({completedIssues.length})
             </TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="notifications" className="justify-start">Notifications</TabsTrigger>
+            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
             {escalatedIssues.length > 0 && (
-              <TabsTrigger value="escalated" className="text-red-600">
+              <TabsTrigger value="escalated" className="justify-start text-red-600">
                 Escalated ({escalatedIssues.length})
               </TabsTrigger>
             )}
           </TabsList>
 
-          <TabsContent value="pending" className="space-y-3">
-            {pendingIssues.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-sm text-gray-500 text-center py-4">No pending issues</p>
-                </CardContent>
-              </Card>
-            ) : (
-              pendingIssues.map((issue) => (
-                <Card 
-                  key={issue.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedIssue(issue)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{issue.equipmentName}</CardTitle>
-                        <CardDescription>{issue.description}</CardDescription>
-                      </div>
-                      <div className="flex gap-2">
-                        {getPriorityBadge(issue.priority)}
-                        {getStatusBadge(issue.status)}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {issue.reportedBy && (
-                      <div className="mb-3">
-                        <p className="text-xs text-gray-500 mb-2">Reported by:</p>
-                        <div className="text-sm">
-                          <span className="font-medium">{issue.reportedBy.name}</span> ({issue.reportedBy.role})
-                          <br />
-                          <span className="text-gray-600">{issue.reportedBy.branch}</span>
-                        </div>
-                      </div>
+          <div className="flex-1 space-y-6">
+            <TabsContent value="pending" className="space-y-3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending Issues</CardTitle>
+                <CardDescription>New assignments awaiting your response.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Issue</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Reported By</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingIssues.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-sm text-slate-500">
+                          No pending issues
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      pendingIssues.map((issue) => (
+                        <TableRow key={issue.id} className="cursor-pointer" onClick={() => setSelectedIssue(issue)}>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{issue.equipmentName}</div>
+                            <div className="text-xs text-slate-500">{issue.description}</div>
+                            <div className="text-xs text-slate-400">{new Date(issue.createdAt).toLocaleDateString()}</div>
+                          </TableCell>
+                          <TableCell>{getPriorityBadge(issue.priority)}</TableCell>
+                          <TableCell>{getStatusBadge(issue.status)}</TableCell>
+                          <TableCell className="text-sm text-slate-600">
+                            {issue.reportedBy?.name || '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setJobAction({ issue, action: 'respond' });
+                              }}
+                            >
+                              Review & Respond
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
                     )}
-                    <div className="flex items-center justify-between pt-3 border-t">
-                      <span className="text-xs text-gray-500">
-                        {new Date(issue.createdAt).toLocaleDateString()} at {new Date(issue.createdAt).toLocaleTimeString()}
-                      </span>
-                      <Button 
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setJobAction({ issue, action: 'respond' });
-                        }}
-                      >
-                        Review & Respond
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+</TabsContent>
 
-          <TabsContent value="inprogress" className="space-y-3">
-            {inProgressIssues.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-sm text-gray-500 text-center py-4">No issues in progress</p>
-                </CardContent>
-              </Card>
-            ) : (
-              inProgressIssues.map((issue) => (
-                <Card 
-                  key={issue.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedIssue(issue)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{issue.equipmentName}</CardTitle>
-                        <CardDescription>{issue.description}</CardDescription>
-                      </div>
-                      <div className="flex gap-2">
-                        {getPriorityBadge(issue.priority)}
-                        {getStatusBadge(issue.status)}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {issue.reportedBy && (
-                      <div className="mb-3">
-                        <p className="text-xs text-gray-500 mb-1">Contact for questions:</p>
-                        <ContactCard 
-                          name={issue.reportedBy.name}
-                          role={issue.reportedBy.role}
-                          branch={issue.reportedBy.branch}
-                          contact={issue.reportedBy.contact}
-                          compact
-                        />
-                      </div>
+            <TabsContent value="inprogress" className="space-y-3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Active Work</CardTitle>
+                <CardDescription>Issues currently in progress.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Issue</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {inProgressIssues.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                          No issues in progress
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      inProgressIssues.map((issue) => (
+                        <TableRow key={issue.id} className="cursor-pointer" onClick={() => setSelectedIssue(issue)}>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{issue.equipmentName}</div>
+                            <div className="text-xs text-slate-500">{issue.description}</div>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(issue.status)}</TableCell>
+                          <TableCell className="text-sm text-slate-600">
+                            <div>{issue.reportedBy?.name || '-'}</div>
+                            <div className="text-xs text-slate-500">{issue.reportedBy?.contact?.phone || issue.reportedBy?.contact?.email || ''}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                              {issue.status === 'in_progress' && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleUpdateIssueStatus(issue.id, 'awaiting_parts')}
+                                  >
+                                    Awaiting Parts
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => setJobAction({ issue, action: 'complete' })}
+                                  >
+                                    Mark Complete
+                                  </Button>
+                                </>
+                              )}
+                              {issue.status === 'awaiting_parts' && (
+                                <Button size="sm" onClick={() => handleUpdateIssueStatus(issue.id, 'in_progress')}>
+                                  Resume Work
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
                     )}
-                    <div className="flex gap-2 pt-3 border-t">
-                      {issue.status === 'in_progress' && (
-                        <>
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateIssueStatus(issue.id, 'awaiting_parts');
-                            }}
-                            className="flex-1"
-                          >
-                            Awaiting Parts
-                          </Button>
-                          <Button 
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setJobAction({ issue, action: 'complete' });
-                            }}
-                            className="flex-1"
-                          >
-                            Mark Complete
-                          </Button>
-                        </>
-                      )}
-                      {issue.status === 'awaiting_parts' && (
-                        <Button 
-                          size="sm"
-                          onClick={(e) => {
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+</TabsContent>
+
+            <TabsContent value="completed" className="space-y-3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Completed Issues</CardTitle>
+                <CardDescription>Closed work with feedback.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Issue</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Rating</TableHead>
+                      <TableHead>Completed</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {completedIssues.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                          No completed issues
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      completedIssues.map((issue) => (
+                        <TableRow key={issue.id} className="cursor-pointer" onClick={() => setSelectedIssue(issue)}>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">{issue.equipmentName}</div>
+                            <div className="text-xs text-slate-500">{issue.description}</div>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(issue.status)}</TableCell>
+                          <TableCell className="text-sm text-slate-600">
+                            {issue.rating ? `${issue.rating}/5` : '-'}
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-500">
+                            {new Date(issue.updatedAt).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+</TabsContent>
+
+            {escalatedIssues.length > 0 && (
+              <TabsContent value="escalated" className="space-y-3">
+            <Card className="border-red-200">
+              <CardHeader>
+                <CardTitle>Escalated Issues</CardTitle>
+                <CardDescription>Immediate attention required.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Issue</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {escalatedIssues.map((issue) => (
+                      <TableRow key={issue.id} className="cursor-pointer" onClick={() => setSelectedIssue(issue)}>
+                        <TableCell>
+                          <div className="font-medium text-slate-900">{issue.equipmentName}</div>
+                          <div className="text-xs text-slate-500">{issue.description}</div>
+                        </TableCell>
+                        <TableCell>{getPriorityBadge(issue.priority)}</TableCell>
+                        <TableCell>{getStatusBadge(issue.status)}</TableCell>
+                        <TableCell>
+                          <Button size="sm" onClick={(e) => {
                             e.stopPropagation();
                             handleUpdateIssueStatus(issue.id, 'in_progress');
-                          }}
-                          className="w-full"
-                        >
-                          Resume Work
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                          }}>
+                            Start Work
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+</TabsContent>
             )}
-          </TabsContent>
 
-          <TabsContent value="completed" className="space-y-3">
-            {completedIssues.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-sm text-gray-500 text-center py-4">No completed issues</p>
-                </CardContent>
-              </Card>
-            ) : (
-              completedIssues.map((issue) => (
-                <Card 
-                  key={issue.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedIssue(issue)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{issue.equipmentName}</CardTitle>
-                        <CardDescription>{issue.description}</CardDescription>
-                      </div>
-                      <div className="flex gap-2">
-                        {getPriorityBadge(issue.priority)}
-                        {getStatusBadge(issue.status)}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      {issue.rating && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-600">Rating:</span>
-                          <span className="font-medium text-yellow-600">{'★'.repeat(issue.rating)}{'☆'.repeat(5 - issue.rating)}</span>
-                        </div>
-                      )}
-                      {issue.feedback && (
-                        <div>
-                          <span className="text-gray-600">Feedback:</span>
-                          <p className="text-gray-800 mt-1">{issue.feedback}</p>
-                        </div>
-                      )}
-                      <div className="text-xs text-gray-500 pt-2 border-t">
-                        Completed on {new Date(issue.updatedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-
-          {escalatedIssues.length > 0 && (
-            <TabsContent value="escalated" className="space-y-3">
-              {escalatedIssues.map((issue) => (
-                <Card 
-                  key={issue.id}
-                  className="border-red-300 cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedIssue(issue)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <AlertCircle className="w-5 h-5 text-red-600" />
-                          <span className="text-xs font-semibold text-red-600 uppercase">SLA Violation</span>
-                        </div>
-                        <CardTitle className="text-lg">{issue.equipmentName}</CardTitle>
-                        <CardDescription>{issue.description}</CardDescription>
-                      </div>
-                      <div className="flex gap-2">
-                        {getPriorityBadge(issue.priority)}
-                        {getStatusBadge(issue.status)}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {issue.reportedBy && (
-                      <div className="mb-3">
-                        <ContactCard 
-                          name={issue.reportedBy.name}
-                          role={issue.reportedBy.role}
-                          branch={issue.reportedBy.branch}
-                          contact={issue.reportedBy.contact}
-                          compact
-                        />
-                      </div>
-                    )}
-                    <div className="bg-red-50 p-3 rounded mt-3">
-                      <p className="text-sm text-red-800 font-medium">
-                        This issue has exceeded its SLA deadline and requires immediate attention.
-                      </p>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <Button 
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUpdateIssueStatus(issue.id, 'in_progress');
-                        }}
-                        className="flex-1"
-                      >
-                        Start Work
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <TabsContent value="notifications">
+              <NotificationsPanel
+                accessToken={accessToken}
+                onInvitationHandled={onInvitationHandled}
+              />
             </TabsContent>
-          )}
 
-          <TabsContent value="notifications">
-            <NotificationsPanel
-              accessToken={accessToken}
-              onInvitationHandled={onInvitationHandled}
-            />
-          </TabsContent>
-
-          <TabsContent value="profile">
-            <ProfileSettings
-              user={user}
-              role={activeRole}
-              accessToken={accessToken}
-              onProfileUpdated={onProfileUpdate}
-            />
-          </TabsContent>
+            <TabsContent value="profile">
+              <ProfileSettings
+                user={user}
+                role={activeRole}
+                accessToken={accessToken}
+                onProfileUpdated={onProfileUpdate}
+              />
+            </TabsContent>
+          </div>
         </Tabs>
       </main>
 
