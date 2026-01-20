@@ -383,7 +383,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                       <Input
                         id="company-name"
                         type="text"
-                        placeholder="Chicken Republic - Port Harcourt"
+                        placeholder="Kilimanjaro Restaurant - Port Harcourt"
                         value={companyData.name}
                         onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
                         required
