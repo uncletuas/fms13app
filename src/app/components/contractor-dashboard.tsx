@@ -210,6 +210,51 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   const inProgressIssues = filteredIssues.filter(i => ['in_progress', 'awaiting_parts'].includes(i.status));
   const completedIssues = filteredIssues.filter(i => ['completed', 'approved', 'closed'].includes(i.status));
   const escalatedIssues = filteredIssues.filter(i => i.status === 'escalated');
+  const issueFilterControls = companyId ? (
+    <div className="mt-4 flex flex-wrap items-end gap-3">
+      <div className="flex-1 min-w-[200px]">
+        <Label className="text-xs text-slate-500">Search</Label>
+        <Input
+          value={issueSearch}
+          onChange={(e) => setIssueSearch(e.target.value)}
+          placeholder="Search issues"
+          className="h-8"
+        />
+      </div>
+      <div>
+        <Label className="text-xs text-slate-500">Priority</Label>
+        <Select value={issuePriorityFilter} onValueChange={setIssuePriorityFilter}>
+          <SelectTrigger className="h-8 w-[140px]">
+            <SelectValue placeholder="Priority" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="text-xs text-slate-500">From</Label>
+        <Input
+          type="date"
+          value={issueStartDate}
+          onChange={(e) => setIssueStartDate(e.target.value)}
+          className="h-8"
+        />
+      </div>
+      <div>
+        <Label className="text-xs text-slate-500">To</Label>
+        <Input
+          type="date"
+          value={issueEndDate}
+          onChange={(e) => setIssueEndDate(e.target.value)}
+          className="h-8"
+        />
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -248,36 +293,8 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
 
       {/* Main Content */}
       <main className="flex-1 min-h-0">
-        <Tabs defaultValue="pending" className="flex h-full min-h-0">
-          <TabsList className="hidden w-60 shrink-0 flex-col items-stretch gap-1 border-r border-border bg-sidebar px-4 py-6 md:flex">
-            <TabsTrigger value="pending" className="justify-start">
-              Pending ({pendingIssues.length})
-            </TabsTrigger>
-            <TabsTrigger value="inprogress" className="justify-start">
-              In Progress ({inProgressIssues.length})
-            </TabsTrigger>
-            <TabsTrigger value="completed" className="justify-start">
-              Completed ({completedIssues.length})
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="justify-start">Notifications</TabsTrigger>
-            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
-            {escalatedIssues.length > 0 && (
-              <TabsTrigger value="escalated" className="justify-start text-red-600">
-                Escalated ({escalatedIssues.length})
-              </TabsTrigger>
-            )}
-          </TabsList>
-
-          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-            <div className="md:hidden">
-              <TabsList className="w-full">
-                <TabsTrigger value="pending" className="justify-start">Pending ({pendingIssues.length})</TabsTrigger>
-                <TabsTrigger value="inprogress" className="justify-start">In Progress ({inProgressIssues.length})</TabsTrigger>
-                <TabsTrigger value="completed" className="justify-start">Completed ({completedIssues.length})</TabsTrigger>
-                <TabsTrigger value="notifications" className="justify-start">Notifications</TabsTrigger>
-                <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
-              </TabsList>
-            </div>
+        <Tabs defaultValue="pending" className="h-full">
+          <div className="px-6 py-6 space-y-6">
         {/* Stats Grid */}
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 ${companyId ? 'mb-6' : ''}`}>
           <Card>
@@ -334,53 +351,24 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
           </Card>
         </div>
 
-        {companyId && (
-          <div className="rounded-md border border-border bg-white px-4 py-3">
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex-1 min-w-[200px]">
-                <Label className="text-xs text-slate-500">Search</Label>
-                <Input
-                  value={issueSearch}
-                  onChange={(e) => setIssueSearch(e.target.value)}
-                  placeholder="Search issues"
-                  className="h-8"
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-slate-500">Priority</Label>
-                <Select value={issuePriorityFilter} onValueChange={setIssuePriorityFilter}>
-                  <SelectTrigger className="h-8 w-[140px]">
-                    <SelectValue placeholder="Priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs text-slate-500">From</Label>
-                <Input
-                  type="date"
-                  value={issueStartDate}
-                  onChange={(e) => setIssueStartDate(e.target.value)}
-                  className="h-8"
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-slate-500">To</Label>
-                <Input
-                  type="date"
-                  value={issueEndDate}
-                  onChange={(e) => setIssueEndDate(e.target.value)}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
-        )}
+        <TabsList className="w-full flex flex-wrap items-center gap-2 border border-border bg-white px-2 py-2">
+          <TabsTrigger value="pending" className="justify-start">
+            Pending ({pendingIssues.length})
+          </TabsTrigger>
+          <TabsTrigger value="inprogress" className="justify-start">
+            In Progress ({inProgressIssues.length})
+          </TabsTrigger>
+          <TabsTrigger value="completed" className="justify-start">
+            Completed ({completedIssues.length})
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="justify-start">Notifications</TabsTrigger>
+          <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
+          {escalatedIssues.length > 0 && (
+            <TabsTrigger value="escalated" className="justify-start text-red-600">
+              Escalated ({escalatedIssues.length})
+            </TabsTrigger>
+          )}
+        </TabsList>
 
         {!companyId && (
           <Card className="border-slate-200 bg-slate-50">
@@ -450,6 +438,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                     </Button>
                   </div>
                 </div>
+                {issueFilterControls}
               </CardHeader>
               <CardContent>
                 <Table>
@@ -546,6 +535,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                     </Button>
                   </div>
                 </div>
+                {issueFilterControls}
               </CardHeader>
               <CardContent>
                 <Table>
@@ -655,6 +645,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                     </Button>
                   </div>
                 </div>
+                {issueFilterControls}
               </CardHeader>
               <CardContent>
                 <Table>
@@ -741,6 +732,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                     </Button>
                   </div>
                 </div>
+                {issueFilterControls}
               </CardHeader>
               <CardContent>
                 <Table>

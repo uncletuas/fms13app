@@ -474,27 +474,8 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
       {/* Main Content */}
       <main className="flex-1 min-h-0">
         {/* Tabbed Content */}
-        <Tabs defaultValue="overview" className="flex h-full min-h-0">
-          <TabsList className="hidden w-60 shrink-0 flex-col items-stretch gap-1 border-r border-border bg-sidebar px-4 py-6 md:flex">
-            <TabsTrigger value="overview" className="justify-start">Overview</TabsTrigger>
-            <TabsTrigger value="facilities" className="justify-start">Facilities</TabsTrigger>
-            <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
-            <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
-            <TabsTrigger value="team" className="justify-start">Team</TabsTrigger>
-            <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
-          </TabsList>
-
-          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-            <div className="md:hidden">
-              <TabsList className="w-full">
-                <TabsTrigger value="overview" className="justify-start">Overview</TabsTrigger>
-                <TabsTrigger value="facilities" className="justify-start">Facilities</TabsTrigger>
-                <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
-                <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
-                <TabsTrigger value="team" className="justify-start">Team</TabsTrigger>
-                <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
-              </TabsList>
-            </div>
+        <Tabs defaultValue="overview" className="h-full">
+          <div className="px-6 py-6 space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card>
@@ -544,6 +525,15 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </CardContent>
           </Card>
         </div>
+
+            <TabsList className="w-full flex flex-wrap items-center gap-2 border border-border bg-white px-2 py-2">
+              <TabsTrigger value="overview" className="justify-start">Overview</TabsTrigger>
+              <TabsTrigger value="facilities" className="justify-start">Facilities</TabsTrigger>
+              <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
+              <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
+              <TabsTrigger value="team" className="justify-start">Team</TabsTrigger>
+              <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
+            </TabsList>
 
 
             <TabsContent value="overview" className="space-y-4">
