@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { toast } from 'sonner';
 import { Building2, ShieldCheck, Users, Wrench } from 'lucide-react';
-import { projectId } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { supabase } from '/utils/supabase/client';
 
 interface AuthPageProps {
@@ -72,7 +72,11 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
     try {
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/signin`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'apikey': publicAnonKey,
+        },
         body: JSON.stringify(loginData)
       });
 
@@ -165,7 +169,11 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
     try {
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/onboarding/company-admin`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'apikey': publicAnonKey,
+        },
         body: JSON.stringify({
           company: companyData,
           admin: adminData,
@@ -202,7 +210,11 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
 
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/onboarding/contractor`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'apikey': publicAnonKey,
+        },
         body: JSON.stringify({
           email: contractorData.email,
           password: contractorData.password,
