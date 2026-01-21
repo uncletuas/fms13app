@@ -18,7 +18,7 @@ export function EquipmentImportDialog({
   companyId,
   accessToken,
   onImported,
-  triggerLabel = 'Import CSV/Excel',
+  triggerLabel = 'Import CSV',
 }: EquipmentImportDialogProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -101,7 +101,7 @@ export function EquipmentImportDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Import Equipment</DialogTitle>
-          <DialogDescription>Upload a CSV or Excel file to add equipment in bulk.</DialogDescription>
+          <DialogDescription>Upload a CSV file to add equipment in bulk.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
@@ -123,7 +123,7 @@ export function EquipmentImportDialog({
             <Input
               id="equipment-import"
               type="file"
-              accept=".csv,.xlsx,.xls"
+              accept=".csv"
               onChange={(e) => handleFileChange(e.target.files?.[0])}
             />
             {fileName && <p className="text-xs text-slate-500">Loaded: {fileName}</p>}

@@ -170,6 +170,48 @@ const sendEmail = async (params: { to: string | string[]; subject: string; html:
   }
 };
 
+const parseCsv = (csvText: string) => {
+  const rows: string[][] = [];
+  const lines = csvText.split(/\r\n|\n|\r/).filter((line) => line.trim().length > 0);
+  for (const line of lines) {
+    const values: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+      if (char === ',' && !inQuotes) {
+        values.push(current);
+        current = '';
+        continue;
+      }
+      current += char;
+    }
+    values.push(current);
+    rows.push(values);
+  }
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((header, index) => {
+    const cleaned = index === 0 ? header.replace(/^\ufeff/, '') : header;
+    return cleaned.trim();
+  });
+  return rows.slice(1).map((row) => {
+    const obj: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      obj[header] = row[index] ?? '';
+    });
+    return obj;
+  });
+};
+
 const getUserEmail = async (userId: string) => {
   const profile = await kv.get(`user:${userId}`);
   if (profile?.email) {
@@ -1037,16 +1079,8 @@ app.post("/make-server-fc558f72/equipment/import", async (c) => {
         return c.json({ error: 'Spreadsheet file is required' }, 400);
       }
       const buffer = await file.arrayBuffer();
-      try {
-        const XLSX = await import("npm:xlsx@0.18.5");
-        const workbook = XLSX.read(buffer, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-      } catch (importError) {
-        console.log('Spreadsheet parse error:', importError);
-        return c.json({ error: 'Failed to parse spreadsheet file' }, 400);
-      }
+      const csvText = new TextDecoder().decode(buffer);
+      rows = parseCsv(csvText);
     } else {
       const payload = await c.req.json();
       rows = payload.equipment || [];
