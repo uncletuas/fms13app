@@ -2,7 +2,6 @@ import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import * as XLSX from "npm:xlsx@0.18.5";
 import * as kv from "./kv_store.ts";
 
 const app = new Hono();
@@ -1038,10 +1037,16 @@ app.post("/make-server-fc558f72/equipment/import", async (c) => {
         return c.json({ error: 'Spreadsheet file is required' }, 400);
       }
       const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      try {
+        const XLSX = await import("npm:xlsx@0.18.5");
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      } catch (importError) {
+        console.log('Spreadsheet parse error:', importError);
+        return c.json({ error: 'Failed to parse spreadsheet file' }, 400);
+      }
     } else {
       const payload = await c.req.json();
       rows = payload.equipment || [];
