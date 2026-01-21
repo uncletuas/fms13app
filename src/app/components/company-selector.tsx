@@ -55,6 +55,8 @@ export function CompanySelector({ companyBindings, accessToken, onSelectCompany,
         return 'Admin';
       case 'facility_manager':
         return 'Facility Manager';
+      case 'facility_supervisor':
+        return 'Facility Supervisor';
       case 'contractor':
         return 'Contractor';
       default:

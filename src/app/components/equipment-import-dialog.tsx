@@ -7,6 +7,50 @@ import { downloadCsv } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { projectId } from '/utils/supabase/info';
 
+const parseCsvText = (csvText: string) => {
+  const rows: string[][] = [];
+  const lines = csvText.split(/\r\n|\n|\r/).filter((line) => line.trim().length > 0);
+  for (const line of lines) {
+    const values: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+      if (char === ',' && !inQuotes) {
+        values.push(current);
+        current = '';
+        continue;
+      }
+      current += char;
+    }
+    values.push(current);
+    rows.push(values);
+  }
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((header, index) => {
+    const cleaned = index === 0 ? header.replace(/^\ufeff/, '') : header;
+    return cleaned.trim();
+  });
+  return rows.slice(1).map((row) => {
+    const obj: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      obj[header] = row[index] ?? '';
+    });
+    return obj;
+  });
+};
+
+const normalizeKey = (value: string) => value.trim().toLowerCase().replace(/\s+/g, '_');
+
 interface EquipmentImportDialogProps {
   companyId: string;
   accessToken: string;
@@ -22,7 +66,10 @@ export function EquipmentImportDialog({
 }: EquipmentImportDialogProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [previewErrors, setPreviewErrors] = useState<string[]>([]);
+  const [previewRows, setPreviewRows] = useState<any[]>([]);
+  const [previewCount, setPreviewCount] = useState(0);
   const [fileName, setFileName] = useState('');
   const [importedCount, setImportedCount] = useState<number | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -41,12 +88,61 @@ export function EquipmentImportDialog({
     { label: 'warrantyPeriod', value: () => '' },
   ];
 
-  const handleFileChange = (file?: File | null) => {
+  const handleFileChange = async (file?: File | null) => {
     if (!file) return;
     setFileName(file.name);
-    setErrors([]);
+    setImportErrors([]);
+    setPreviewErrors([]);
+    setPreviewRows([]);
+    setPreviewCount(0);
     setImportedCount(null);
     setFile(file);
+    try {
+      const csvText = await file.text();
+      const rows = parseCsvText(csvText);
+      setPreviewCount(rows.length);
+
+      const seen = new Set<string>();
+      const errors: string[] = [];
+      rows.forEach((row, index) => {
+        const normalized = Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [normalizeKey(key), value])
+        );
+        const name = normalized.name || normalized.equipment || normalized.equipment_name;
+        const category = normalized.category || normalized.equipment_category;
+        const facility = normalized.facility_id || normalized.facility || normalized.facility_name || normalized.branch;
+        if (!name || !category || !facility) {
+          errors.push(`Row ${index + 2}: name, category, and facility are required`);
+        }
+        const serialNumber = normalized.serialnumber || normalized.serial_number || '';
+        if (serialNumber && facility) {
+          const key = `${String(facility).trim().toLowerCase()}:${String(serialNumber).trim().toLowerCase()}`;
+          if (seen.has(key)) {
+            errors.push(`Row ${index + 2}: duplicate serialNumber in file`);
+          } else {
+            seen.add(key);
+          }
+        }
+      });
+
+      const preview = rows.slice(0, 5).map((row) => {
+        const normalized = Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [normalizeKey(key), value])
+        );
+        return {
+          name: normalized.name || normalized.equipment || normalized.equipment_name || '',
+          category: normalized.category || normalized.equipment_category || '',
+          facility: normalized.facility_id || normalized.facility || normalized.facility_name || normalized.branch || '',
+          location: normalized.location || '',
+          serialNumber: normalized.serialnumber || normalized.serial_number || ''
+        };
+      });
+      setPreviewRows(preview);
+      setPreviewErrors(errors);
+    } catch (error) {
+      console.error('Parse CSV error:', error);
+      setPreviewErrors(['Unable to parse CSV preview.']);
+    }
   };
 
   const handleImport = async () => {
@@ -76,7 +172,7 @@ export function EquipmentImportDialog({
       }
 
       const errorMessages = (data.errors || []).map((item: any) => `Row ${item.row}: ${item.error}`);
-      setErrors(errorMessages);
+      setImportErrors(errorMessages);
       setImportedCount(data.created.length);
       if (data.errors?.length) {
         toast.error(`Imported ${data.created.length} items with ${data.errors.length} errors`);
@@ -129,21 +225,50 @@ export function EquipmentImportDialog({
             {fileName && <p className="text-xs text-slate-500">Loaded: {fileName}</p>}
           </div>
 
-          {errors.length > 0 && (
+          {previewErrors.length > 0 && (
             <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-              <div className="font-semibold">Skipped rows</div>
+              <div className="font-semibold">Preview warnings</div>
               <ul className="mt-2 space-y-1">
-                {errors.slice(0, 5).map((error) => (
+                {previewErrors.slice(0, 5).map((error) => (
                   <li key={error}>{error}</li>
                 ))}
               </ul>
-              {errors.length > 5 && <div className="mt-2">...and {errors.length - 5} more</div>}
+              {previewErrors.length > 5 && <div className="mt-2">...and {previewErrors.length - 5} more</div>}
+            </div>
+          )}
+
+          {previewRows.length > 0 && (
+            <div className="rounded-md border border-border bg-white p-3 text-xs text-slate-600">
+              <div className="font-semibold text-slate-700">Preview (first {previewRows.length} of {previewCount})</div>
+              <div className="mt-2 grid gap-1">
+                {previewRows.map((row, index) => (
+                  <div key={`${row.name}-${index}`} className="grid grid-cols-5 gap-2">
+                    <span className="truncate">{row.name || '-'}</span>
+                    <span className="truncate">{row.category || '-'}</span>
+                    <span className="truncate">{row.facility || '-'}</span>
+                    <span className="truncate">{row.location || '-'}</span>
+                    <span className="truncate">{row.serialNumber || '-'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {importErrors.length > 0 && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+              <div className="font-semibold">Skipped rows</div>
+              <ul className="mt-2 space-y-1">
+                {importErrors.slice(0, 5).map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+              {importErrors.length > 5 && <div className="mt-2">...and {importErrors.length - 5} more</div>}
             </div>
           )}
 
           <div className="rounded-md border border-border bg-white p-3 text-xs text-slate-600">
             <div>Imported: {importedCount ?? '-'}</div>
-            <div>Errors: {errors.length}</div>
+            <div>Errors: {importErrors.length}</div>
           </div>
 
           <Button onClick={handleImport} disabled={isImporting || !file} className="w-full">

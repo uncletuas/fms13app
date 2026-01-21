@@ -34,6 +34,8 @@ export function ContactCard({ title, name, role, branch, contact, compact }: Con
         return 'bg-purple-100 text-purple-800';
       case 'facility_manager':
         return 'bg-blue-100 text-blue-800';
+      case 'facility_supervisor':
+        return 'bg-slate-100 text-slate-700';
       case 'contractor':
         return 'bg-green-100 text-green-800';
       default:

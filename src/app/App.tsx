@@ -245,6 +245,18 @@ export default function App() {
           onProfileUpdate={handleProfileUpdate}
         />
       )}
+      {currentRole === 'facility_supervisor' && (
+        <AdminDashboard 
+          user={user} 
+          accessToken={accessToken} 
+          onLogout={handleLogout}
+          companyId={selectedCompany!}
+          companyBindings={effectiveBindings}
+          onCompanyChange={handleCompanyChange}
+          onProfileUpdate={handleProfileUpdate}
+          readOnly
+        />
+      )}
       {currentRole === 'facility_manager' && (
         <FacilityManagerDashboard 
           user={user} 

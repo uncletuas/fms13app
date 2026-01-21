@@ -15,6 +15,12 @@ import { ProfileSettings } from '@/app/components/profile-settings';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
 import { IssueTimeline } from '@/app/components/issue-timeline';
 import { EquipmentImportDialog } from '@/app/components/equipment-import-dialog';
+import { EquipmentMaintenancePanel } from '@/app/components/equipment-maintenance-panel';
+import { EquipmentReplacementDialog } from '@/app/components/equipment-replacement-dialog';
+import { ReportsPanel } from '@/app/components/reports-panel';
+import { ProceduresPanel } from '@/app/components/procedures-panel';
+import { ConsumablesPanel } from '@/app/components/consumables-panel';
+import { ProcedureChecklistPanel } from '@/app/components/procedure-checklist-panel';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { Building2, Package, AlertCircle, Users, LogOut, Plus, UserPlus, Settings } from 'lucide-react';
@@ -28,9 +34,11 @@ interface AdminDashboardProps {
   companyBindings: any[];
   onCompanyChange: (companyId: string) => void;
   onProfileUpdate: (profile: any) => void;
+  readOnly?: boolean;
 }
 
-export function AdminDashboard({ user, accessToken, onLogout, companyId, companyBindings, onCompanyChange, onProfileUpdate }: AdminDashboardProps) {
+export function AdminDashboard({ user, accessToken, onLogout, companyId, companyBindings, onCompanyChange, onProfileUpdate, readOnly }: AdminDashboardProps) {
+  const isReadOnly = readOnly === true;
   const [stats, setStats] = useState<any>(null);
   const [facilities, setFacilities] = useState<any[]>([]);
   const [issues, setIssues] = useState<any[]>([]);
@@ -63,6 +71,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const [facilityEndDate, setFacilityEndDate] = useState('');
 
   const [managerSearch, setManagerSearch] = useState('');
+  const [supervisorSearch, setSupervisorSearch] = useState('');
   const [contractorSearch, setContractorSearch] = useState('');
   
   const [facilityData, setFacilityData] = useState({ 
@@ -78,6 +87,14 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     name: '',
     phone: '',
     facilityIds: [] as string[]
+  });
+
+  const [isCreateFSOpen, setIsCreateFSOpen] = useState(false);
+  const [fsData, setFsData] = useState({
+    email: '',
+    password: '',
+    name: '',
+    phone: ''
   });
 
   const [fmEditData, setFmEditData] = useState({
@@ -308,6 +325,62 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     }
   };
 
+  const handleCreateFacilitySupervisor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users/facility-supervisor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ ...fsData, companyId })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Facility Supervisor created successfully');
+        setIsCreateFSOpen(false);
+        setFsData({ email: '', password: '', name: '', phone: '' });
+        loadDashboardData();
+      } else {
+        toast.error(data.error || 'Failed to create Facility Supervisor');
+      }
+    } catch (error) {
+      console.error('Create supervisor error:', error);
+      toast.error('Failed to create Facility Supervisor');
+    }
+  };
+
+  const handleToggleContractorStatus = async (contractor: any) => {
+    const isSuspended = contractor?.binding?.status === 'suspended';
+    const reason = isSuspended ? '' : (window.prompt('Reason for suspension (optional):') || '');
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/contractors/${contractor.id}/${isSuspended ? 'resume' : 'suspend'}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({ companyId, reason })
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success(isSuspended ? 'Contractor resumed' : 'Contractor suspended');
+        loadDashboardData();
+      } else {
+        toast.error(data.error || 'Failed to update contractor status');
+      }
+    } catch (error) {
+      console.error('Update contractor status error:', error);
+      toast.error('Failed to update contractor status');
+    }
+  };
+
   const toggleFacilityAssignment = (facilityId: string) => {
     setFmData((prev) => {
       const isSelected = prev.facilityIds.includes(facilityId);
@@ -388,6 +461,14 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
+  const formatMinutes = (value?: number | null) => {
+    if (value === null || value === undefined) return '-';
+    if (value < 60) return `${value}m`;
+    const hours = Math.floor(value / 60);
+    const minutes = value % 60;
+    return `${hours}h ${minutes}m`;
+  };
+
   const issueQuery = issueSearch.trim().toLowerCase();
   const filteredIssues = issues.filter((issue) => {
     const matchesQuery = !issueQuery
@@ -425,6 +506,15 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     .filter((fm) => {
       const matchesQuery = !managerQuery
         || `${fm.name} ${fm.email || ''} ${fm.phone || ''}`.toLowerCase().includes(managerQuery);
+      return matchesQuery;
+    });
+
+  const supervisorQuery = supervisorSearch.trim().toLowerCase();
+  const filteredSupervisors = companyUsers
+    .filter((user) => user.role === 'facility_supervisor')
+    .filter((sup) => {
+      const matchesQuery = !supervisorQuery
+        || `${sup.name} ${sup.email || ''} ${sup.phone || ''}`.toLowerCase().includes(supervisorQuery);
       return matchesQuery;
     });
 
@@ -542,6 +632,9 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
               <TabsTrigger value="facilities" className="justify-start">Facilities</TabsTrigger>
               <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
               <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
+              <TabsTrigger value="reports" className="justify-start">Reports</TabsTrigger>
+              <TabsTrigger value="procedures" className="justify-start">Procedures</TabsTrigger>
+              <TabsTrigger value="consumables" className="justify-start">Consumables</TabsTrigger>
               <TabsTrigger value="team" className="justify-start">Team</TabsTrigger>
               <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
             </TabsList>
@@ -665,6 +758,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                     <CardTitle>Facilities</CardTitle>
                     <CardDescription className="text-xs italic text-emerald-600">Manage company branches</CardDescription>
                   </div>
+                  {!isReadOnly && (
                   <Dialog open={isCreateFacilityOpen} onOpenChange={setIsCreateFacilityOpen}>
                     <DialogTrigger asChild>
                       <Button>
@@ -721,6 +815,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       </form>
                     </DialogContent>
                   </Dialog>
+                  )}
                 </div>
                 <div className="mt-4 flex flex-wrap items-end gap-3">
                   <div className="flex-1 min-w-[200px]">
@@ -874,11 +969,13 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       className="h-8"
                     />
                   </div>
-                  <EquipmentImportDialog
-                    companyId={companyId}
-                    accessToken={accessToken}
-                    onImported={loadDashboardData}
-                  />
+                  {!isReadOnly && (
+                    <EquipmentImportDialog
+                      companyId={companyId}
+                      accessToken={accessToken}
+                      onImported={loadDashboardData}
+                    />
+                  )}
                   <Button
                     variant="outline"
                     className="h-8"
@@ -1118,8 +1215,34 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </Card>
           </TabsContent>
 
-            <TabsContent value="team" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="reports" className="space-y-4">
+            <ReportsPanel
+              companyId={companyId}
+              equipment={equipment}
+              issues={issues}
+              contractors={contractors}
+            />
+          </TabsContent>
+
+          <TabsContent value="procedures" className="space-y-4">
+            <ProceduresPanel
+              companyId={companyId}
+              accessToken={accessToken}
+              canEdit={!isReadOnly}
+            />
+          </TabsContent>
+
+          <TabsContent value="consumables" className="space-y-4">
+            <ConsumablesPanel
+              companyId={companyId}
+              accessToken={accessToken}
+              canEdit={!isReadOnly}
+              equipment={equipment}
+            />
+          </TabsContent>
+
+          <TabsContent value="team" className="space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               {/* Facility Managers */}
               <Card>
                 <CardHeader>
@@ -1128,6 +1251,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       <CardTitle>Facility Managers</CardTitle>
                       <CardDescription className="text-xs italic text-emerald-600">Manage facility staff</CardDescription>
                     </div>
+                    {!isReadOnly && (
                     <Dialog open={isCreateFMOpen} onOpenChange={setIsCreateFMOpen}>
                       <DialogTrigger asChild>
                         <Button size="sm">
@@ -1202,6 +1326,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                         </form>
                       </DialogContent>
                     </Dialog>
+                    )}
                   </div>
                   <div className="mt-4 flex flex-wrap items-end gap-3">
                     <div className="flex-1 min-w-[200px]">
@@ -1279,9 +1404,119 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                               {fm.facilityIds?.length ? `${fm.facilityIds.length} assigned` : '-'}
                             </TableCell>
                             <TableCell>
-                              <Button size="sm" variant="outline" onClick={() => openEditFacilityManager(fm)}>
-                                Edit Profile
-                              </Button>
+                              {!isReadOnly && (
+                                <Button size="sm" variant="outline" onClick={() => openEditFacilityManager(fm)}>
+                                  Edit Profile
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              {/* Facility Supervisors */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Facility Supervisors</CardTitle>
+                      <CardDescription className="text-xs italic text-emerald-600">Read-only oversight</CardDescription>
+                    </div>
+                    {!isReadOnly && (
+                      <Dialog open={isCreateFSOpen} onOpenChange={setIsCreateFSOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Add Supervisor
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Create Facility Supervisor</DialogTitle>
+                            <DialogDescription>Add a read-only supervisor account</DialogDescription>
+                          </DialogHeader>
+                          <form onSubmit={handleCreateFacilitySupervisor} className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="fs-name">Full Name</Label>
+                              <Input
+                                id="fs-name"
+                                value={fsData.name}
+                                onChange={(e) => setFsData({ ...fsData, name: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="fs-email">Email</Label>
+                              <Input
+                                id="fs-email"
+                                type="email"
+                                value={fsData.email}
+                                onChange={(e) => setFsData({ ...fsData, email: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="fs-phone">Phone</Label>
+                              <Input
+                                id="fs-phone"
+                                value={fsData.phone}
+                                onChange={(e) => setFsData({ ...fsData, phone: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="fs-password">Temporary Password</Label>
+                              <Input
+                                id="fs-password"
+                                type="password"
+                                value={fsData.password}
+                                onChange={(e) => setFsData({ ...fsData, password: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <Button type="submit" className="w-full">Create Supervisor</Button>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2 pb-3">
+                    <Input
+                      value={supervisorSearch}
+                      onChange={(e) => setSupervisorSearch(e.target.value)}
+                      placeholder="Search supervisors"
+                      className="h-8"
+                    />
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Contact</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSupervisors.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center text-sm text-slate-500">
+                            No supervisors yet
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredSupervisors.map((sup) => (
+                          <TableRow key={sup.id}>
+                            <TableCell>
+                              <div className="font-medium text-slate-900">{sup.name}</div>
+                              <div className="text-xs text-slate-500">{sup.role}</div>
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-600">
+                              <div>{sup.email || '-'}</div>
+                              <div className="text-xs text-slate-500">{sup.phone || '-'}</div>
                             </TableCell>
                           </TableRow>
                         ))
@@ -1299,6 +1534,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       <CardTitle>Contractors</CardTitle>
                       <CardDescription className="text-xs italic text-emerald-600">Assigned contractors</CardDescription>
                     </div>
+                    {!isReadOnly && (
                     <Dialog open={isAssignContractorOpen} onOpenChange={setIsAssignContractorOpen}>
                       <DialogTrigger asChild>
                         <Button size="sm">
@@ -1327,6 +1563,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                         </form>
                       </DialogContent>
                     </Dialog>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -1353,6 +1590,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                               label: 'Specialization',
                               value: (row: any) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
                             },
+                            { label: 'Status', value: (row: any) => row?.binding?.status || 'active' },
                           ] as ExportColumn<any>[],
                           filteredContractors
                         )}
@@ -1372,6 +1610,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                             label: 'Specialization',
                             value: (row: any) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
                           },
+                          { label: 'Status', value: (row: any) => row?.binding?.status || 'active' },
                         ] as ExportColumn<any>[],
                         filteredContractors
                       )}
@@ -1385,13 +1624,15 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                         <TableHead>Name</TableHead>
                         <TableHead>Contact</TableHead>
                         <TableHead>Specialization</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Performance</TableHead>
                         <TableHead>Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredContractors.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                          <TableCell colSpan={6} className="text-center text-sm text-slate-500">
                             No contractors assigned
                           </TableCell>
                         </TableRow>
@@ -1410,9 +1651,35 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                               {contractor.specialization || (Array.isArray(contractor.skills) ? contractor.skills.join(', ') : contractor.skills) || '-'}
                             </TableCell>
                             <TableCell>
-                              <Button size="sm" variant="destructive" onClick={() => handleRemoveContractor(contractor.id)}>
-                                Remove
-                              </Button>
+                              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${
+                                contractor?.binding?.status === 'suspended'
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : 'bg-emerald-100 text-emerald-700'
+                              }`}>
+                                {contractor?.binding?.status === 'suspended' ? 'Suspended' : 'Active'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-xs text-slate-600">
+                              <div>Response: {formatMinutes(contractor.performance?.avg_response_minutes)}</div>
+                              <div>Completion: {formatMinutes(contractor.performance?.avg_completion_minutes)}</div>
+                              <div>Missed SLA: {contractor.performance?.delayed_jobs_count ?? 0}</div>
+                            </TableCell>
+                            <TableCell>
+                              {!isReadOnly && (
+                                <>
+                                  <Button size="sm" variant="destructive" onClick={() => handleRemoveContractor(contractor.id)}>
+                                    Remove
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="ml-2"
+                                    onClick={() => handleToggleContractorStatus(contractor)}
+                                  >
+                                    {contractor?.binding?.status === 'suspended' ? 'Resume' : 'Suspend'}
+                                  </Button>
+                                </>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
@@ -1562,22 +1829,43 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                 </div>
               </div>
 
-              {selectedEquipment.recordedBy && (
-                <ContactCard 
-                  title="Recorded By"
-                  name={selectedEquipment.recordedBy.name}
-                  role={selectedEquipment.recordedBy.role}
-                  branch={selectedEquipment.recordedBy.branch}
-                  contact={selectedEquipment.recordedBy.contact}
-                />
-              )}
+                {selectedEquipment.recordedBy && (
+                  <ContactCard 
+                    title="Recorded By"
+                    name={selectedEquipment.recordedBy.name}
+                    role={selectedEquipment.recordedBy.role}
+                    branch={selectedEquipment.recordedBy.branch}
+                    contact={selectedEquipment.recordedBy.contact}
+                  />
+                )}
 
-              <ActivityLog 
-                entityType="equipment"
-                entityId={selectedEquipment.id}
-                accessToken={accessToken}
-                title="Equipment History"
-              />
+                <EquipmentReplacementDialog
+                  equipment={selectedEquipment}
+                  accessToken={accessToken}
+                  canEdit={!isReadOnly}
+                  onReplaced={loadDashboardData}
+                />
+
+                <EquipmentMaintenancePanel
+                  equipmentId={selectedEquipment.id}
+                  accessToken={accessToken}
+                  canEdit={!isReadOnly}
+                />
+
+                <ProcedureChecklistPanel
+                  companyId={companyId}
+                  equipmentId={selectedEquipment.id}
+                  equipmentCategory={selectedEquipment.category}
+                  accessToken={accessToken}
+                  canEdit={!isReadOnly}
+                />
+
+                <ActivityLog 
+                  entityType="equipment"
+                  entityId={selectedEquipment.id}
+                  accessToken={accessToken}
+                  title="Equipment History"
+                />
             </div>
           </DialogContent>
         </Dialog>

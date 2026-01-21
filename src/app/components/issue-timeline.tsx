@@ -45,6 +45,11 @@ const computeMetrics = (issue: any) => {
 
 export function IssueTimeline({ issue }: IssueTimelineProps) {
   const metrics = computeMetrics(issue);
+  const slaDeadline = issue.slaDeadline ? new Date(issue.slaDeadline) : null;
+  const completedAt = issue.completedAt || issue.completion?.completedAt || null;
+  const isOverdue = slaDeadline
+    ? (completedAt ? new Date(completedAt).getTime() > slaDeadline.getTime() : Date.now() > slaDeadline.getTime())
+    : false;
   const events = [
     { label: 'Issue reported', timestamp: issue.createdAt, by: issue.reportedBy?.name },
     { label: 'Assigned to contractor', timestamp: issue.assignedAt, by: issue.assignedTo || null },
@@ -64,7 +69,9 @@ export function IssueTimeline({ issue }: IssueTimelineProps) {
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-slate-900">Execution Timeline</div>
         {issue.slaDeadline && (
-          <Badge className="bg-slate-100 text-slate-700">SLA {formatTimestamp(issue.slaDeadline)}</Badge>
+          <Badge className={isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}>
+            SLA {formatTimestamp(issue.slaDeadline)} {isOverdue ? '- Missed' : ''}
+          </Badge>
         )}
       </div>
       <div className="mt-3 space-y-3">

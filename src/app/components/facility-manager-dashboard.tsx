@@ -16,6 +16,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { IssueTimeline } from '@/app/components/issue-timeline';
 import { EquipmentImportDialog } from '@/app/components/equipment-import-dialog';
+import { EquipmentMaintenancePanel } from '@/app/components/equipment-maintenance-panel';
+import { EquipmentReplacementDialog } from '@/app/components/equipment-replacement-dialog';
+import { ProceduresPanel } from '@/app/components/procedures-panel';
+import { ConsumablesPanel } from '@/app/components/consumables-panel';
+import { ProcedureChecklistPanel } from '@/app/components/procedure-checklist-panel';
 import { toast } from 'sonner';
 import { Package, AlertCircle, LogOut, Plus, CheckCircle } from 'lucide-react';
 import { projectId } from '/utils/supabase/info';
@@ -62,7 +67,8 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     equipmentId: '',
     facilityId: '',
     description: '',
-    priority: 'medium'
+    priority: 'medium',
+    slaDeadline: ''
   });
 
   const [issueUpdateData, setIssueUpdateData] = useState({
@@ -198,12 +204,14 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             companyId,
             description: issueData.description,
             priority: issueData.priority,
+            slaDeadline: issueData.slaDeadline || undefined,
             taskType: 'general'
           }
         : {
             equipmentId: issueData.equipmentId,
             description: issueData.description,
             priority: issueData.priority,
+            slaDeadline: issueData.slaDeadline || undefined,
             taskType: 'equipment'
           };
 
@@ -221,7 +229,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
       if (data.success) {
         toast.success('Issue reported successfully');
         setIsCreateIssueOpen(false);
-        setIssueData({ taskType: 'equipment', title: '', equipmentId: '', facilityId: '', description: '', priority: 'medium' });
+        setIssueData({ taskType: 'equipment', title: '', equipmentId: '', facilityId: '', description: '', priority: 'medium', slaDeadline: '' });
         loadDashboardData();
       } else {
         toast.error(data.error || 'Failed to report issue');
@@ -368,6 +376,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     const matchesDate = inDateRange(contractor.createdAt, contractorStartDate, contractorEndDate);
     return matchesQuery && matchesDate;
   });
+  const activeContractors = contractors.filter((contractor) => contractor?.binding?.status !== 'suspended');
   const avatarUrl = user?.avatarUrl || user?.avatar_url || user?.profile?.avatarUrl;
   const initials = (user?.name || 'User')
     .trim()
@@ -478,6 +487,8 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             <TabsList className="w-full flex flex-wrap items-center gap-2 border border-border bg-white px-2 py-2">
               <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
               <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
+              <TabsTrigger value="procedures" className="justify-start">Procedures</TabsTrigger>
+              <TabsTrigger value="consumables" className="justify-start">Consumables</TabsTrigger>
               <TabsTrigger value="contractors" className="justify-start">Contractors</TabsTrigger>
               <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
             </TabsList>
@@ -598,6 +609,15 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                               <SelectItem value="high">High</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="issue-sla">Target completion (SLA)</Label>
+                          <Input
+                            id="issue-sla"
+                            type="datetime-local"
+                            value={issueData.slaDeadline}
+                            onChange={(e) => setIssueData({ ...issueData, slaDeadline: e.target.value })}
+                          />
                         </div>
                         <Button type="submit" className="w-full">Report Issue</Button>
                       </form>
@@ -745,7 +765,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                                     <SelectValue placeholder="Assign contractor" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {contractors.map((contractor) => (
+                                    {activeContractors.map((contractor) => (
                                       <SelectItem key={contractor.id} value={contractor.id}>
                                         {contractor.name}
                                       </SelectItem>
@@ -759,7 +779,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                                     <SelectValue placeholder="Change contractor" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {contractors.map((contractor) => (
+                                    {activeContractors.map((contractor) => (
                                       <SelectItem key={contractor.id} value={contractor.id}>
                                         {contractor.name}
                                       </SelectItem>
@@ -895,7 +915,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                               <SelectValue placeholder="Select contractor" />
                             </SelectTrigger>
                             <SelectContent>
-                              {contractors.map((contractor) => (
+                              {activeContractors.map((contractor) => (
                                 <SelectItem key={contractor.id} value={contractor.id}>
                                   {contractor.name}
                                 </SelectItem>
@@ -1044,6 +1064,23 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
 </CardContent>
             </Card>
           </TabsContent>
+
+            <TabsContent value="procedures" className="space-y-4">
+              <ProceduresPanel
+                companyId={companyId}
+                accessToken={accessToken}
+                canEdit={activeRole === 'facility_manager' || activeRole === 'company_admin'}
+              />
+            </TabsContent>
+
+            <TabsContent value="consumables" className="space-y-4">
+              <ConsumablesPanel
+                companyId={companyId}
+                accessToken={accessToken}
+                canEdit={activeRole === 'facility_manager' || activeRole === 'company_admin'}
+                equipment={equipment}
+              />
+            </TabsContent>
 
             <TabsContent value="contractors" className="space-y-4">
             <Card>
@@ -1311,22 +1348,43 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 </div>
               </div>
 
-              {selectedEquipment.recordedBy && (
-                <ContactCard 
-                  title="Recorded By"
-                  name={selectedEquipment.recordedBy.name}
-                  role={selectedEquipment.recordedBy.role}
-                  branch={selectedEquipment.recordedBy.branch}
-                  contact={selectedEquipment.recordedBy.contact}
-                />
-              )}
+                {selectedEquipment.recordedBy && (
+                  <ContactCard 
+                    title="Recorded By"
+                    name={selectedEquipment.recordedBy.name}
+                    role={selectedEquipment.recordedBy.role}
+                    branch={selectedEquipment.recordedBy.branch}
+                    contact={selectedEquipment.recordedBy.contact}
+                  />
+                )}
 
-              <ActivityLog 
-                entityType="equipment"
-                entityId={selectedEquipment.id}
-                accessToken={accessToken}
-                title="Equipment History"
-              />
+                <EquipmentReplacementDialog
+                  equipment={selectedEquipment}
+                  accessToken={accessToken}
+                  canEdit={activeRole === 'facility_manager' || activeRole === 'company_admin'}
+                  onReplaced={loadDashboardData}
+                />
+
+                <EquipmentMaintenancePanel
+                  equipmentId={selectedEquipment.id}
+                  accessToken={accessToken}
+                  canEdit={activeRole === 'facility_manager' || activeRole === 'company_admin'}
+                />
+
+                <ProcedureChecklistPanel
+                  companyId={companyId}
+                  equipmentId={selectedEquipment.id}
+                  equipmentCategory={selectedEquipment.category}
+                  accessToken={accessToken}
+                  canEdit={activeRole === 'facility_manager' || activeRole === 'company_admin'}
+                />
+
+                <ActivityLog 
+                  entityType="equipment"
+                  entityId={selectedEquipment.id}
+                  accessToken={accessToken}
+                  title="Equipment History"
+                />
             </div>
           </DialogContent>
         </Dialog>
