@@ -14,6 +14,7 @@ import { JobActionModal } from '@/app/components/job-action-modal';
 import { ProfileSettings } from '@/app/components/profile-settings';
 import { NotificationsPanel } from '@/app/components/notifications-panel';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
+import { IssueTimeline } from '@/app/components/issue-timeline';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { Wrench, Clock, CheckCircle, AlertCircle, LogOut, Building2 } from 'lucide-react';
@@ -824,7 +825,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
               </div>
 
               {selectedIssue.reportedBy && (
-                <ContactCard 
+                <ContactCard
                   title="Reported By (Contact for Questions)"
                   name={selectedIssue.reportedBy.name}
                   role={selectedIssue.reportedBy.role}
@@ -832,6 +833,8 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                   contact={selectedIssue.reportedBy.contact}
                 />
               )}
+
+              <IssueTimeline issue={selectedIssue} />
 
               {selectedIssue.slaDeadline && (
                 <div className="p-3 bg-gray-50 rounded">

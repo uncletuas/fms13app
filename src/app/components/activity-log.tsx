@@ -8,9 +8,10 @@ interface ActivityLogProps {
   entityType: 'company' | 'facility' | 'equipment' | 'issue' | 'user';
   entityId: string;
   accessToken: string;
+  title?: string;
 }
 
-export function ActivityLog({ entityType, entityId, accessToken }: ActivityLogProps) {
+export function ActivityLog({ entityType, entityId, accessToken, title }: ActivityLogProps) {
   const [activities, setActivities] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -82,7 +83,7 @@ export function ActivityLog({ entityType, entityId, accessToken }: ActivityLogPr
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Activity Log</CardTitle>
+          <CardTitle>{title || 'Activity Log'}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-gray-500">Loading activities...</p>
@@ -95,7 +96,7 @@ export function ActivityLog({ entityType, entityId, accessToken }: ActivityLogPr
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Activity Log</CardTitle>
+          <CardTitle>{title || 'Activity Log'}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-gray-500">No activity recorded yet</p>
@@ -107,7 +108,7 @@ export function ActivityLog({ entityType, entityId, accessToken }: ActivityLogPr
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Activity Log</CardTitle>
+        <CardTitle>{title || 'Activity Log'}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

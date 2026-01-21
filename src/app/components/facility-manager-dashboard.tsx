@@ -14,6 +14,8 @@ import { ActivityLog } from '@/app/components/activity-log';
 import { ProfileSettings } from '@/app/components/profile-settings';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
+import { IssueTimeline } from '@/app/components/issue-timeline';
+import { EquipmentImportDialog } from '@/app/components/equipment-import-dialog';
 import { toast } from 'sonner';
 import { Package, AlertCircle, LogOut, Plus, CheckCircle } from 'lucide-react';
 import { projectId } from '/utils/supabase/info';
@@ -949,6 +951,11 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                       className="h-8"
                     />
                   </div>
+                  <EquipmentImportDialog
+                    companyId={companyId}
+                    accessToken={accessToken}
+                    onImported={loadDashboardData}
+                  />
                   <Button
                     variant="outline"
                     className="h-8"
@@ -1191,6 +1198,8 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 />
               )}
 
+              <IssueTimeline issue={selectedIssue} />
+
               {selectedIssue.contractorResponse && (
                 <div className="p-3 border rounded-lg">
                   <h4 className="font-semibold mb-2">Contractor Response</h4>
@@ -1316,6 +1325,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 entityType="equipment"
                 entityId={selectedEquipment.id}
                 accessToken={accessToken}
+                title="Equipment History"
               />
             </div>
           </DialogContent>

@@ -13,6 +13,8 @@ import { Checkbox } from '@/app/components/ui/checkbox';
 import { ActivityLog } from '@/app/components/activity-log';
 import { ProfileSettings } from '@/app/components/profile-settings';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
+import { IssueTimeline } from '@/app/components/issue-timeline';
+import { EquipmentImportDialog } from '@/app/components/equipment-import-dialog';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { Building2, Package, AlertCircle, Users, LogOut, Plus, UserPlus, Settings } from 'lucide-react';
@@ -872,6 +874,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       className="h-8"
                     />
                   </div>
+                  <EquipmentImportDialog
+                    companyId={companyId}
+                    accessToken={accessToken}
+                    onImported={loadDashboardData}
+                  />
                   <Button
                     variant="outline"
                     className="h-8"
@@ -1525,6 +1532,8 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                 />
               )}
 
+              <IssueTimeline issue={selectedIssue} />
+
               <ActivityLog 
                 entityType="issue"
                 entityId={selectedIssue.id}
@@ -1567,6 +1576,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                 entityType="equipment"
                 entityId={selectedEquipment.id}
                 accessToken={accessToken}
+                title="Equipment History"
               />
             </div>
           </DialogContent>
