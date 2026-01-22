@@ -6,7 +6,7 @@ import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Badge } from '@/app/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { Tabs, TabsContent } from '@/app/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { ContactCard } from '@/app/components/contact-card';
 import { Checkbox } from '@/app/components/ui/checkbox';
@@ -17,14 +17,31 @@ import { IssueTimeline } from '@/app/components/issue-timeline';
 import { EquipmentImportDialog } from '@/app/components/equipment-import-dialog';
 import { EquipmentMaintenancePanel } from '@/app/components/equipment-maintenance-panel';
 import { EquipmentReplacementDialog } from '@/app/components/equipment-replacement-dialog';
+import { AdminIntelligencePanel } from '@/app/components/admin-intelligence-panel';
 import { ReportsPanel } from '@/app/components/reports-panel';
 import { ProceduresPanel } from '@/app/components/procedures-panel';
 import { ConsumablesPanel } from '@/app/components/consumables-panel';
 import { ProcedureChecklistPanel } from '@/app/components/procedure-checklist-panel';
+import { NotificationsPanel } from '@/app/components/notifications-panel';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarSeparator,
+  SidebarTrigger
+} from '@/app/components/ui/sidebar';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
-import { Building2, Package, AlertCircle, Users, LogOut, Plus, UserPlus, Settings } from 'lucide-react';
-import { projectId } from '/utils/supabase/info';
+import { AlertCircle, Bell, Building2, ClipboardList, FlaskConical, LayoutGrid, LineChart, LogOut, Package, Plus, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 interface AdminDashboardProps {
   user: any;
@@ -46,6 +63,8 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const [companyUsers, setCompanyUsers] = useState<any[]>([]);
   const [contractors, setContractors] = useState<any[]>([]);
   const [company, setCompany] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   
   const [isCreateFacilityOpen, setIsCreateFacilityOpen] = useState(false);
   const [isCreateFMOpen, setIsCreateFMOpen] = useState(false);
@@ -117,6 +136,13 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   }, [companyId]);
 
   useEffect(() => {
+    if (!accessToken) return;
+    loadNotificationCount();
+    const interval = setInterval(() => loadNotificationCount(), 30000);
+    return () => clearInterval(interval);
+  }, [accessToken]);
+
+  useEffect(() => {
     if (!companyId) return;
     const interval = setInterval(() => loadDashboardData(), 30000);
     const handleFocus = () => loadDashboardData();
@@ -129,45 +155,40 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
 
   const loadDashboardData = async () => {
     try {
-      const [statsRes, companyRes, facilitiesRes, issuesRes, equipmentRes, usersRes, contractorsRes] = await Promise.all([
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/dashboard/stats?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies/${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/facilities?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/contractors?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        })
-      ]);
+      if (!accessToken) {
+        return;
+      }
+      const authHeaders = { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey };
+      const fetchJson = async (url: string) => {
+        try {
+          const response = await fetch(url, { headers: authHeaders, cache: 'no-store' });
+          const text = await response.text();
+          const data = text ? JSON.parse(text) : {};
+          if (!response.ok) {
+            return { success: false, error: data.error || response.statusText };
+          }
+          return data;
+        } catch (error) {
+          return { success: false, error: 'Network error' };
+        }
+      };
 
-      const [statsData, companyData, facilitiesData, issuesData, equipmentData, usersData, contractorsData] = await Promise.all([
-        statsRes.json(),
-        companyRes.json(),
-        facilitiesRes.json(),
-        issuesRes.json(),
-        equipmentRes.json(),
-        usersRes.json(),
-        contractorsRes.json()
+      const [
+        statsData,
+        companyData,
+        facilitiesData,
+        issuesData,
+        equipmentData,
+        usersData,
+        contractorsData
+      ] = await Promise.all([
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/dashboard/stats?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies/${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/facilities?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/contractors?companyId=${companyId}`)
       ]);
 
       if (statsData.success) setStats(statsData.stats);
@@ -177,9 +198,34 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
       if (equipmentData.success) setEquipment(equipmentData.equipment);
       if (usersData.success) setCompanyUsers(usersData.users);
       if (contractorsData.success) setContractors(contractorsData.contractors);
+      if ([statsData, companyData, facilitiesData, issuesData, equipmentData, usersData, contractorsData].some((item) => item?.error)) {
+        const firstError = [statsData, companyData, facilitiesData, issuesData, equipmentData, usersData, contractorsData]
+          .map((item) => item?.error)
+          .find(Boolean);
+        if (firstError) {
+          toast.error(firstError);
+        }
+      }
     } catch (error) {
       console.error('Dashboard load error:', error);
       toast.error('Failed to load dashboard data');
+    }
+  };
+
+  const loadNotificationCount = async () => {
+    if (!accessToken) return;
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/notifications`, {
+        headers: { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey },
+        cache: 'no-store'
+      });
+      const data = await response.json();
+      if (data.success) {
+        const unreadCount = (data.notifications || []).filter((item: any) => !item.read).length;
+        setUnreadNotifications(unreadCount);
+      }
+    } catch (error) {
+      console.error('Load notification count error:', error);
     }
   };
 
@@ -328,11 +374,16 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const handleCreateFacilitySupervisor = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (!companyId) {
+        toast.error('Select a company before creating a supervisor');
+        return;
+      }
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users/facility-supervisor`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
+          apikey: publicAnonKey
         },
         body: JSON.stringify({ ...fsData, companyId })
       });
@@ -533,26 +584,131 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     .map((part: string) => part[0])
     .join('')
     .toUpperCase();
+  const tabTitles: Record<string, string> = {
+    overview: 'Overview',
+    facilities: 'Facilities',
+    equipment: 'Equipment',
+    issues: 'Issues',
+    reports: 'Reports',
+    procedures: 'Procedures',
+    consumables: 'Consumables',
+    team: 'Team'
+  };
+  const pageTitle = tabTitles[activeTab] || 'Overview';
+  const roleLabel = isReadOnly ? 'Facility Supervisor' : 'Company Admin';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <SidebarProvider defaultOpen>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex-row gap-0">
+        <Sidebar collapsible="icon" className="border-r border-border bg-sidebar">
+          <SidebarHeader className="gap-3 border-b border-sidebar-border px-4 py-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                <ShieldCheck className="h-4 w-4" />
+              </span>
+              FMS.13 Admin
+            </div>
+            <div className="text-xs text-slate-500">{company?.name || 'Select a company'}</div>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
+                    <LayoutGrid />
+                    <span>Overview</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'facilities'} onClick={() => setActiveTab('facilities')}>
+                    <Building2 />
+                    <span>Facilities</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'equipment'} onClick={() => setActiveTab('equipment')}>
+                    <Package />
+                    <span>Equipment</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'issues'} onClick={() => setActiveTab('issues')}>
+                    <AlertCircle />
+                    <span>Issues</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'reports'} onClick={() => setActiveTab('reports')}>
+                    <LineChart />
+                    <span>Reports</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'procedures'} onClick={() => setActiveTab('procedures')}>
+                    <ClipboardList />
+                    <span>Procedures</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'consumables'} onClick={() => setActiveTab('consumables')}>
+                    <FlaskConical />
+                    <span>Consumables</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'team'} onClick={() => setActiveTab('team')}>
+                    <Users />
+                    <span>Team</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroup>
+            <SidebarSeparator />
+          </SidebarContent>
+          <SidebarFooter className="border-t border-sidebar-border px-4 py-4 text-xs text-slate-500">
+            {roleLabel} access
+          </SidebarFooter>
+        </Sidebar>
+
+        <SidebarInset className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
-              <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
-            </Avatar>
+            <SidebarTrigger className="md:hidden" />
+            <Dialog>
+              <DialogTrigger asChild>
+                <button type="button" className="group">
+                  <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-emerald-200">
+                    <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+                    <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
+                  </Avatar>
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>Profile settings</DialogTitle>
+                  <DialogDescription>Review and update your personal details.</DialogDescription>
+                </DialogHeader>
+                <ProfileSettings
+                  user={user}
+                  role={user?.role || (isReadOnly ? 'facility_supervisor' : 'company_admin')}
+                  accessToken={accessToken}
+                  onProfileUpdated={onProfileUpdate}
+                />
+              </DialogContent>
+            </Dialog>
             <div>
-              <h1 className="text-xl font-semibold text-slate-900">Company Admin Dashboard</h1>
-              <p className="text-xs italic text-emerald-600">{company?.name || 'Loading...'} - {user.name}</p>
+              <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
+              <p className="text-xs italic text-emerald-600">{company?.name || 'Loading...'} - {roleLabel}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {companyBindings.length > 1 && (
               <Select value={companyId} onValueChange={onCompanyChange}>
                 <SelectTrigger className="w-[200px]">
+                  <Building2 className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
                 <SelectContent>
@@ -564,6 +720,28 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                 </SelectContent>
               </Select>
             )}
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon" className="relative" aria-label="Notifications">
+                  <Bell className="h-4 w-4" />
+                  {unreadNotifications > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
+                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                    </span>
+                  )}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle>Notifications</DialogTitle>
+                  <DialogDescription>Updates and audit alerts.</DialogDescription>
+                </DialogHeader>
+                <NotificationsPanel
+                  accessToken={accessToken}
+                  onUnreadCount={setUnreadNotifications}
+                />
+              </DialogContent>
+            </Dialog>
             <Button variant="outline" onClick={onLogout}>
               <LogOut className="w-4 h-4 mr-2" />
               Logout
@@ -573,74 +751,73 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 min-h-0">
-        {/* Tabbed Content */}
-        <Tabs defaultValue="overview" className="h-full">
-          <div className="px-6 py-6 space-y-6">
+      <main className="flex-1 overflow-y-auto">
+        <div className="px-6 py-6 space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Facilities</CardTitle>
-              <Building2 className="w-4 h-4 text-gray-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Facilities</CardTitle>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                <Building2 className="h-4 w-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalFacilities || 0}</div>
+              <div className="text-2xl font-semibold text-slate-900">{stats?.totalFacilities || 0}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Equipment</CardTitle>
-              <Package className="w-4 h-4 text-gray-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Equipment</CardTitle>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                <Package className="h-4 w-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalEquipment || 0}</div>
-              <div className="text-xs text-gray-500 mt-1">
-                <span className="text-green-600">o</span> {stats?.healthyEquipment || 0} Healthy
-                <span className="text-yellow-600 ml-2">o</span> {stats?.concerningEquipment || 0} Warning
-                <span className="text-red-600 ml-2">o</span> {stats?.criticalEquipment || 0} Critical
+              <div className="text-2xl font-semibold text-slate-900">{stats?.totalEquipment || 0}</div>
+              <div className="text-xs text-slate-500 mt-1">
+                <span className="text-emerald-600">o</span> {stats?.healthyEquipment || 0} Healthy
+                <span className="text-amber-600 ml-2">o</span> {stats?.concerningEquipment || 0} Warning
+                <span className="text-rose-600 ml-2">o</span> {stats?.criticalEquipment || 0} Critical
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Open Issues</CardTitle>
-              <AlertCircle className="w-4 h-4 text-gray-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Open Issues</CardTitle>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+                <AlertCircle className="h-4 w-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.openIssues || 0}</div>
-              <p className="text-xs text-red-600 mt-1">{stats?.criticalIssues || 0} Critical</p>
+              <div className="text-2xl font-semibold text-slate-900">{stats?.openIssues || 0}</div>
+              <p className="text-xs text-rose-600 mt-1">{stats?.criticalIssues || 0} Critical</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Team Members</CardTitle>
-              <Users className="w-4 h-4 text-gray-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Team Members</CardTitle>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <Users className="h-4 w-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{companyUsers.length}</div>
-              <p className="text-xs text-gray-500 mt-1">{contractors.length} Contractors</p>
+              <div className="text-2xl font-semibold text-slate-900">{companyUsers.length}</div>
+              <p className="text-xs text-slate-500 mt-1">{contractors.length} Contractors</p>
             </CardContent>
           </Card>
         </div>
 
-            <TabsList className="w-full flex flex-wrap items-center gap-2 border border-border bg-white px-2 py-2">
-              <TabsTrigger value="overview" className="justify-start">Overview</TabsTrigger>
-              <TabsTrigger value="facilities" className="justify-start">Facilities</TabsTrigger>
-              <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
-              <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
-              <TabsTrigger value="reports" className="justify-start">Reports</TabsTrigger>
-              <TabsTrigger value="procedures" className="justify-start">Procedures</TabsTrigger>
-              <TabsTrigger value="consumables" className="justify-start">Consumables</TabsTrigger>
-              <TabsTrigger value="team" className="justify-start">Team</TabsTrigger>
-              <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
-            </TabsList>
-
-
-            <TabsContent value="overview" className="space-y-4">
+            <TabsContent value="overview" className="space-y-6">
+            <AdminIntelligencePanel
+              facilities={facilities}
+              equipment={equipment}
+              issues={issues}
+              contractors={contractors}
+            />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Issues */}
               <Card>
@@ -1232,14 +1409,15 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             />
           </TabsContent>
 
-          <TabsContent value="consumables" className="space-y-4">
-            <ConsumablesPanel
-              companyId={companyId}
-              accessToken={accessToken}
-              canEdit={!isReadOnly}
-              equipment={equipment}
-            />
-          </TabsContent>
+            <TabsContent value="consumables" className="space-y-4">
+              <ConsumablesPanel
+                companyId={companyId}
+                accessToken={accessToken}
+                canEdit={!isReadOnly}
+                canManage={!isReadOnly}
+                equipment={equipment}
+              />
+            </TabsContent>
 
           <TabsContent value="team" className="space-y-4">
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -1691,16 +1869,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </div>
           </TabsContent>
 
-            <TabsContent value="profile">
-              <ProfileSettings
-                user={user}
-                role="company_admin"
-                accessToken={accessToken}
-                onProfileUpdated={onProfileUpdate}
-              />
-            </TabsContent>
           </div>
-        </Tabs>
       </main>
 
       {selectedFM && (
@@ -1870,6 +2039,8 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
           </DialogContent>
         </Dialog>
       )}
-    </div>
+        </SidebarInset>
+      </Tabs>
+    </SidebarProvider>
   );
 }

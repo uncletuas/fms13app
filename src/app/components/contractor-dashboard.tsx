@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/app/components/ui/dialog';
 import { Badge } from '@/app/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { Tabs, TabsContent } from '@/app/components/ui/tabs';
 import { ContactCard } from '@/app/components/contact-card';
 import { ActivityLog } from '@/app/components/activity-log';
 import { JobActionModal } from '@/app/components/job-action-modal';
@@ -16,9 +16,24 @@ import { NotificationsPanel } from '@/app/components/notifications-panel';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
 import { IssueTimeline } from '@/app/components/issue-timeline';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarSeparator,
+  SidebarTrigger
+} from '@/app/components/ui/sidebar';
 import { toast } from 'sonner';
-import { Wrench, Clock, CheckCircle, AlertCircle, LogOut, Building2 } from 'lucide-react';
-import { projectId } from '/utils/supabase/info';
+import { Wrench, Clock, CheckCircle, AlertCircle, LogOut, Building2, Bell } from 'lucide-react';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 interface ContractorDashboardProps {
   user: any;
@@ -35,8 +50,10 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   const [stats, setStats] = useState<any>(null);
   const [issues, setIssues] = useState<any[]>([]);
   const [company, setCompany] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('pending');
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [jobAction, setJobAction] = useState<{ issue: any; action: 'respond' | 'complete' } | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const activeRole = companyBindings.find((binding) => binding.companyId === companyId)?.role || user?.role || 'contractor';
   const [companyDirectory, setCompanyDirectory] = useState<Record<string, any>>({});
   const [issueSearch, setIssueSearch] = useState('');
@@ -60,7 +77,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
         const entries = await Promise.all(
           uniqueIds.map(async (id) => {
             const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies/${id}`, {
-              headers: { 'Authorization': `Bearer ${accessToken}` },
+              headers: { 'Authorization': `Bearer ${accessToken}`, apikey: publicAnonKey },
               cache: 'no-store'
             });
             const data = await response.json();
@@ -82,6 +99,30 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   }, [companyBindings, accessToken]);
 
   useEffect(() => {
+    if (!accessToken) return;
+    loadNotificationCount();
+    const interval = setInterval(() => loadNotificationCount(), 30000);
+    return () => clearInterval(interval);
+  }, [accessToken]);
+
+  const loadNotificationCount = async () => {
+    if (!accessToken) return;
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/notifications`, {
+        headers: { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey },
+        cache: 'no-store'
+      });
+      const data = await response.json();
+      if (data.success) {
+        const unreadCount = (data.notifications || []).filter((item: any) => !item.read).length;
+        setUnreadNotifications(unreadCount);
+      }
+    } catch (error) {
+      console.error('Load notification count error:', error);
+    }
+  };
+
+  useEffect(() => {
     if (!companyId) return;
     const interval = setInterval(() => loadDashboardData(), 30000);
     const handleFocus = () => loadDashboardData();
@@ -99,32 +140,41 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
       setCompany(null);
       return;
     }
+    if (!accessToken) {
+      return;
+    }
 
     try {
-      const [statsRes, issuesRes, companyRes] = await Promise.all([
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/dashboard/stats?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies/${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        })
-      ]);
+      const authHeaders = { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey };
+      const fetchJson = async (url: string) => {
+        try {
+          const response = await fetch(url, { headers: authHeaders, cache: 'no-store' });
+          const text = await response.text();
+          const data = text ? JSON.parse(text) : {};
+          if (!response.ok) {
+            return { success: false, error: data.error || response.statusText };
+          }
+          return data;
+        } catch (error) {
+          return { success: false, error: 'Network error' };
+        }
+      };
 
       const [statsData, issuesData, companyData] = await Promise.all([
-        statsRes.json(),
-        issuesRes.json(),
-        companyRes.json()
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/dashboard/stats?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies/${companyId}`)
       ]);
 
       if (statsData.success) setStats(statsData.stats);
       if (issuesData.success) setIssues(issuesData.issues);
       if (companyData.success) setCompany(companyData.company);
+      if ([statsData, issuesData, companyData].some((item) => item?.error)) {
+        const firstError = [statsData, issuesData, companyData].map((item) => item?.error).find(Boolean);
+        if (firstError) {
+          toast.error(firstError);
+        }
+      }
     } catch (error) {
       console.error('Dashboard load error:', error);
       toast.error('Failed to load dashboard data');
@@ -257,6 +307,16 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
       </div>
     </div>
   ) : null;
+  const tabTitles: Record<string, string> = {
+    pending: 'Pending Requests',
+    inprogress: 'In Progress',
+    completed: 'Completed',
+    escalated: 'Escalated'
+  };
+  const pageTitle = tabTitles[activeTab] || 'Pending Requests';
+  const subtitle = companyId
+    ? (company?.name || companyDirectory[companyId]?.name || 'Loading...')
+    : 'Independent Contractor';
   const avatarUrl = user?.avatarUrl || user?.avatar_url || user?.profile?.avatarUrl;
   const initials = (user?.name || 'User')
     .trim()
@@ -268,50 +328,135 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
     .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
-              <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-xl font-semibold text-slate-900">Contractor Dashboard</h1>
-              <p className="text-xs italic text-emerald-600">
-                {companyId ? (company?.name || companyDirectory[companyId]?.name || 'Loading...') : 'Independent Contractor'} - {user.name}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {companyBindings.length > 0 && (
-              <Select value={companyId ?? ''} onValueChange={onCompanyChange}>
-                <SelectTrigger className="w-[200px]">
-                  <Building2 className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Select company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companyBindings.map((binding) => (
-                    <SelectItem key={binding.companyId} value={binding.companyId}>
-                      {companyDirectory[binding.companyId]?.name || binding.companyId}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <Button variant="outline" onClick={onLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+    <SidebarProvider defaultOpen>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex-row gap-0">
+        <Sidebar collapsible="icon" className="border-r border-border bg-sidebar">
+          <SidebarHeader className="gap-3 border-b border-sidebar-border px-4 py-4">
+            <div className="text-sm font-semibold text-slate-900">Contractor Workspace</div>
+            <div className="text-xs text-slate-500">{user?.name}</div>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Assignments</SidebarGroupLabel>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'pending'} onClick={() => setActiveTab('pending')}>
+                    <Clock />
+                    <span>Pending</span>
+                    <span className="ml-auto text-xs text-slate-500">{pendingIssues.length}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'inprogress'} onClick={() => setActiveTab('inprogress')}>
+                    <Wrench />
+                    <span>In Progress</span>
+                    <span className="ml-auto text-xs text-slate-500">{inProgressIssues.length}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'completed'} onClick={() => setActiveTab('completed')}>
+                    <CheckCircle />
+                    <span>Completed</span>
+                    <span className="ml-auto text-xs text-slate-500">{completedIssues.length}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'escalated'} onClick={() => setActiveTab('escalated')}>
+                    <AlertCircle />
+                    <span>Escalated</span>
+                    <span className="ml-auto text-xs text-slate-500">{escalatedIssues.length}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroup>
+            <SidebarSeparator />
+          </SidebarContent>
+          <SidebarFooter className="border-t border-sidebar-border px-4 py-4 text-xs text-slate-500">
+            Contractor access
+          </SidebarFooter>
+        </Sidebar>
 
-      {/* Main Content */}
-      <main className="flex-1 min-h-0">
-        <Tabs defaultValue="pending" className="h-full">
-          <div className="px-6 py-6 space-y-6">
+        <SidebarInset className="min-h-screen bg-background flex flex-col">
+          <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <SidebarTrigger className="md:hidden" />
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button type="button" className="group">
+                      <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-emerald-200">
+                        <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+                        <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
+                      </Avatar>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                      <DialogTitle>Profile settings</DialogTitle>
+                      <DialogDescription>Review and update your contractor profile.</DialogDescription>
+                    </DialogHeader>
+                    <ProfileSettings
+                      user={user}
+                      role={activeRole}
+                      accessToken={accessToken}
+                      onProfileUpdated={onProfileUpdate}
+                    />
+                  </DialogContent>
+                </Dialog>
+                <div>
+                  <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
+                  <p className="text-xs italic text-emerald-600">{subtitle} - {user.name}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {companyBindings.length > 0 && (
+                  <Select value={companyId ?? ''} onValueChange={onCompanyChange}>
+                    <SelectTrigger className="w-[220px]">
+                      <Building2 className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Select company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companyBindings.map((binding) => (
+                        <SelectItem key={binding.companyId} value={binding.companyId}>
+                          {companyDirectory[binding.companyId]?.name || binding.companyId}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" aria-label="Notifications" className="relative">
+                      <Bell className="h-4 w-4" />
+                      {unreadNotifications > 0 && (
+                        <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
+                          {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                        </span>
+                      )}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle>Notifications</DialogTitle>
+                      <DialogDescription>Invitations and job updates.</DialogDescription>
+                    </DialogHeader>
+                    <NotificationsPanel
+                      accessToken={accessToken}
+                      onInvitationHandled={onInvitationHandled}
+                      onUnreadCount={setUnreadNotifications}
+                    />
+                  </DialogContent>
+                </Dialog>
+                <Button variant="outline" onClick={onLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-y-auto">
+            <div className="px-6 py-6 space-y-6">
         {/* Stats Grid */}
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 ${companyId ? 'mb-6' : ''}`}>
           <Card>
@@ -367,25 +512,6 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             </CardContent>
           </Card>
         </div>
-
-        <TabsList className="w-full flex flex-wrap items-center gap-2 border border-border bg-white px-2 py-2">
-          <TabsTrigger value="pending" className="justify-start">
-            Pending ({pendingIssues.length})
-          </TabsTrigger>
-          <TabsTrigger value="inprogress" className="justify-start">
-            In Progress ({inProgressIssues.length})
-          </TabsTrigger>
-          <TabsTrigger value="completed" className="justify-start">
-            Completed ({completedIssues.length})
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="justify-start">Notifications</TabsTrigger>
-          <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
-          {escalatedIssues.length > 0 && (
-            <TabsTrigger value="escalated" className="justify-start text-red-600">
-              Escalated ({escalatedIssues.length})
-            </TabsTrigger>
-          )}
-        </TabsList>
 
         {!companyId && (
           <Card className="border-slate-200 bg-slate-50">
@@ -704,107 +830,97 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             </Card>
 </TabsContent>
 
-            {escalatedIssues.length > 0 && (
-              <TabsContent value="escalated" className="space-y-3">
-            <Card className="border-red-200">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <CardTitle>Escalated Issues</CardTitle>
-                    <CardDescription className="text-xs italic text-emerald-600">Immediate attention required.</CardDescription>
+            <TabsContent value="escalated" className="space-y-3">
+              <Card className="border-red-200">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <CardTitle>Escalated Issues</CardTitle>
+                      <CardDescription className="text-xs italic text-emerald-600">Immediate attention required.</CardDescription>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => downloadCsv(
+                          `escalated-issues-${companyId || 'all'}.csv`,
+                          [
+                            { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                            { label: 'Priority', value: (row: any) => row.priority },
+                            { label: 'Status', value: (row: any) => row.status },
+                            { label: 'Created', value: (row: any) => row.createdAt || row.updatedAt || '-' },
+                          ] as ExportColumn<any>[],
+                          escalatedIssues
+                        )}
+                      >
+                        Download CSV
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => printTable(
+                          'Escalated Issues',
+                          [
+                            { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
+                            { label: 'Priority', value: (row: any) => row.priority },
+                            { label: 'Status', value: (row: any) => row.status },
+                            { label: 'Created', value: (row: any) => row.createdAt || row.updatedAt || '-' },
+                          ] as ExportColumn<any>[],
+                          escalatedIssues,
+                          `${issueStartDate || 'All'} to ${issueEndDate || 'All'}`
+                        )}
+                      >
+                        Print PDF
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      className="h-8"
-                      onClick={() => downloadCsv(
-                        `escalated-issues-${companyId || 'all'}.csv`,
-                        [
-                          { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
-                          { label: 'Priority', value: (row: any) => row.priority },
-                          { label: 'Status', value: (row: any) => row.status },
-                          { label: 'Created', value: (row: any) => row.createdAt || row.updatedAt || '-' },
-                        ] as ExportColumn<any>[],
-                        escalatedIssues
-                      )}
-                    >
-                      Download CSV
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-8"
-                      onClick={() => printTable(
-                        'Escalated Issues',
-                        [
-                          { label: 'Issue', value: (row: any) => row.title || row.equipmentName || row.id },
-                          { label: 'Priority', value: (row: any) => row.priority },
-                          { label: 'Status', value: (row: any) => row.status },
-                          { label: 'Created', value: (row: any) => row.createdAt || row.updatedAt || '-' },
-                        ] as ExportColumn<any>[],
-                        escalatedIssues,
-                        `${issueStartDate || 'All'} to ${issueEndDate || 'All'}`
-                      )}
-                    >
-                      Print PDF
-                    </Button>
-                  </div>
-                </div>
-                {issueFilterControls}
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Issue</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {escalatedIssues.map((issue) => (
-                      <TableRow key={issue.id} className="cursor-pointer" onClick={() => setSelectedIssue(issue)}>
-                        <TableCell>
-                          <div className="font-medium text-slate-900">{issue.equipmentName}</div>
-                          <div className="text-xs text-slate-500">{issue.description}</div>
-                        </TableCell>
-                        <TableCell>{getPriorityBadge(issue.priority)}</TableCell>
-                        <TableCell>{getStatusBadge(issue.status)}</TableCell>
-                        <TableCell>
-                          <Button size="sm" onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateIssueStatus(issue.id, 'in_progress');
-                          }}>
-                            Start Work
-                          </Button>
-                        </TableCell>
+                  {issueFilterControls}
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Issue</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Action</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-</TabsContent>
-            )}
-
-            <TabsContent value="notifications">
-              <NotificationsPanel
-                accessToken={accessToken}
-                onInvitationHandled={onInvitationHandled}
-              />
+                    </TableHeader>
+                    <TableBody>
+                      {escalatedIssues.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                            No escalated issues
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        escalatedIssues.map((issue) => (
+                          <TableRow key={issue.id} className="cursor-pointer" onClick={() => setSelectedIssue(issue)}>
+                            <TableCell>
+                              <div className="font-medium text-slate-900">{issue.equipmentName}</div>
+                              <div className="text-xs text-slate-500">{issue.description}</div>
+                            </TableCell>
+                            <TableCell>{getPriorityBadge(issue.priority)}</TableCell>
+                            <TableCell>{getStatusBadge(issue.status)}</TableCell>
+                            <TableCell>
+                              <Button size="sm" onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdateIssueStatus(issue.id, 'in_progress');
+                              }}>
+                                Start Work
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
             </TabsContent>
 
-            <TabsContent value="profile">
-              <ProfileSettings
-                user={user}
-                role={activeRole}
-                accessToken={accessToken}
-                onProfileUpdated={onProfileUpdate}
-              />
-            </TabsContent>
-          </div>
-        </Tabs>
-      </main>
+            </div>
+          </main>
 
       {/* Issue Detail Dialog */}
       {selectedIssue && (
@@ -912,6 +1028,8 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
           }}
         />
       )}
-    </div>
+        </SidebarInset>
+      </Tabs>
+    </SidebarProvider>
   );
 }

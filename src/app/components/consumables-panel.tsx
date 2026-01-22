@@ -6,16 +6,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Textarea } from '@/app/components/ui/textarea';
 import { toast } from 'sonner';
-import { projectId } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 interface ConsumablesPanelProps {
   companyId: string;
   accessToken: string;
   canEdit: boolean;
+  canManage?: boolean;
   equipment: any[];
 }
 
-export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }: ConsumablesPanelProps) {
+export function ConsumablesPanel({ companyId, accessToken, canEdit, canManage, equipment }: ConsumablesPanelProps) {
   const [enabled, setEnabled] = useState(false);
   const [consumables, setConsumables] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -39,11 +40,13 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
     }
   }, [enabled]);
 
+  const canAdminister = canManage ?? canEdit;
+
   const loadModule = async () => {
     try {
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/modules?companyId=${companyId}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+        { headers: { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey } }
       );
       const data = await response.json();
       if (data.success) {
@@ -58,7 +61,7 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
     try {
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/consumables?companyId=${companyId}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+        { headers: { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey } }
       );
       const data = await response.json();
       if (data.success) {
@@ -77,7 +80,7 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
       if (endDate) params.set('endDate', endDate);
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/consumables/events?${params.toString()}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+        { headers: { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey } }
       );
       const data = await response.json();
       if (data.success) {
@@ -89,6 +92,10 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
   };
 
   const handleToggleModule = async () => {
+    if (!companyId) {
+      toast.error('Select a company before enabling modules');
+      return;
+    }
     try {
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/modules`,
@@ -96,7 +103,8 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`
+            Authorization: `Bearer ${accessToken}`,
+            apikey: publicAnonKey
           },
           body: JSON.stringify({ companyId, consumablesEnabled: !enabled })
         }
@@ -127,7 +135,8 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`
+            Authorization: `Bearer ${accessToken}`,
+            apikey: publicAnonKey
           },
           body: JSON.stringify({ companyId, name, unit })
         }
@@ -156,7 +165,8 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`
+            Authorization: `Bearer ${accessToken}`,
+            apikey: publicAnonKey
           },
           body: JSON.stringify({
             companyId,
@@ -197,10 +207,14 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
       <div className="rounded-md border border-border bg-white p-4">
         <div className="text-sm font-semibold text-slate-900">Consumables module</div>
         <p className="text-xs text-slate-500 mt-1">Enable consumables to track usage and servicing items.</p>
-        {canEdit && (
+        {canAdminister ? (
           <Button variant="outline" className="mt-3" onClick={handleToggleModule}>
             Enable module
           </Button>
+        ) : (
+          <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            Ask a company admin to enable this module.
+          </div>
         )}
       </div>
     );
@@ -208,7 +222,7 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
 
   return (
     <div className="space-y-4">
-      {canEdit && (
+      {canAdminister && (
         <div className="rounded-md border border-border bg-white p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -222,7 +236,7 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
         </div>
       )}
 
-      {canEdit && (
+      {canAdminister && (
         <div className="rounded-md border border-border bg-white p-4">
           <div className="text-sm font-semibold text-slate-900">Add consumable</div>
           <form onSubmit={handleCreateConsumable} className="mt-3 grid gap-3">
@@ -274,46 +288,48 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, equipment }:
         </Table>
       </div>
 
-      <div className="rounded-md border border-border bg-white p-4">
-        <div className="text-sm font-semibold text-slate-900">Log usage</div>
-        <form onSubmit={handleLogEvent} className="mt-3 grid gap-3">
-          <div className="space-y-1">
-            <Label>Consumable</Label>
-            <Select value={eventConsumableId} onValueChange={setEventConsumableId}>
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="Select consumable" />
-              </SelectTrigger>
-              <SelectContent>
-                {consumables.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Equipment (optional)</Label>
-            <Select value={eventEquipmentId} onValueChange={setEventEquipmentId}>
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="Select equipment" />
-              </SelectTrigger>
-              <SelectContent>
-                {equipment.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Quantity</Label>
-            <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} type="number" step="0.01" required />
-          </div>
-          <div className="space-y-1">
-            <Label>Notes</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
-          </div>
-          <Button type="submit" disabled={!eventConsumableId}>Log usage</Button>
-        </form>
-      </div>
+      {canEdit && (
+        <div className="rounded-md border border-border bg-white p-4">
+          <div className="text-sm font-semibold text-slate-900">Log usage</div>
+          <form onSubmit={handleLogEvent} className="mt-3 grid gap-3">
+            <div className="space-y-1">
+              <Label>Consumable</Label>
+              <Select value={eventConsumableId} onValueChange={setEventConsumableId}>
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="Select consumable" />
+                </SelectTrigger>
+                <SelectContent>
+                  {consumables.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Equipment (optional)</Label>
+              <Select value={eventEquipmentId} onValueChange={setEventEquipmentId}>
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="Select equipment" />
+                </SelectTrigger>
+                <SelectContent>
+                  {equipment.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Quantity</Label>
+              <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} type="number" step="0.01" required />
+            </div>
+            <div className="space-y-1">
+              <Label>Notes</Label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+            </div>
+            <Button type="submit" disabled={!eventConsumableId}>Log usage</Button>
+          </form>
+        </div>
+      )}
 
       <div className="rounded-md border border-border bg-white">
         <div className="flex flex-wrap items-end gap-3 border-b border-border px-4 py-3">

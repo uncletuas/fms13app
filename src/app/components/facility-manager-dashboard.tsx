@@ -8,7 +8,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Badge } from '@/app/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { Tabs, TabsContent } from '@/app/components/ui/tabs';
 import { ContactCard } from '@/app/components/contact-card';
 import { ActivityLog } from '@/app/components/activity-log';
 import { ProfileSettings } from '@/app/components/profile-settings';
@@ -21,9 +21,25 @@ import { EquipmentReplacementDialog } from '@/app/components/equipment-replaceme
 import { ProceduresPanel } from '@/app/components/procedures-panel';
 import { ConsumablesPanel } from '@/app/components/consumables-panel';
 import { ProcedureChecklistPanel } from '@/app/components/procedure-checklist-panel';
+import { NotificationsPanel } from '@/app/components/notifications-panel';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarSeparator,
+  SidebarTrigger
+} from '@/app/components/ui/sidebar';
 import { toast } from 'sonner';
-import { Package, AlertCircle, LogOut, Plus, CheckCircle } from 'lucide-react';
-import { projectId } from '/utils/supabase/info';
+import { AlertCircle, Bell, Building2, CheckCircle, ClipboardList, FlaskConical, LogOut, Package, Plus, Users } from 'lucide-react';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 interface FacilityManagerDashboardProps {
   user: any;
@@ -41,6 +57,8 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   const [issues, setIssues] = useState<any[]>([]);
   const [contractors, setContractors] = useState<any[]>([]);
   const [facilities, setFacilities] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('issues');
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const activeRole = companyBindings.find((binding) => binding.companyId === companyId)?.role || user?.role || 'facility_manager';
   
   const [isCreateEquipmentOpen, setIsCreateEquipmentOpen] = useState(false);
@@ -98,6 +116,13 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   }, [companyId]);
 
   useEffect(() => {
+    if (!accessToken) return;
+    loadNotificationCount();
+    const interval = setInterval(() => loadNotificationCount(), 30000);
+    return () => clearInterval(interval);
+  }, [accessToken]);
+
+  useEffect(() => {
     if (!companyId) return;
     const interval = setInterval(() => loadDashboardData(), 30000);
     const handleFocus = () => loadDashboardData();
@@ -110,35 +135,30 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
 
   const loadDashboardData = async () => {
     try {
-      const [statsRes, facilitiesRes, equipmentRes, issuesRes, contractorsRes] = await Promise.all([
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/dashboard/stats?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/facilities?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/contractors?companyId=${companyId}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          cache: 'no-store'
-        })
-      ]);
+      if (!accessToken) {
+        return;
+      }
+      const authHeaders = { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey };
+      const fetchJson = async (url: string) => {
+        try {
+          const response = await fetch(url, { headers: authHeaders, cache: 'no-store' });
+          const text = await response.text();
+          const data = text ? JSON.parse(text) : {};
+          if (!response.ok) {
+            return { success: false, error: data.error || response.statusText };
+          }
+          return data;
+        } catch (error) {
+          return { success: false, error: 'Network error' };
+        }
+      };
 
       const [statsData, facilitiesData, equipmentData, issuesData, contractorsData] = await Promise.all([
-        statsRes.json(),
-        facilitiesRes.json(),
-        equipmentRes.json(),
-        issuesRes.json(),
-        contractorsRes.json()
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/dashboard/stats?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/facilities?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues?companyId=${companyId}`),
+        fetchJson(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/contractors?companyId=${companyId}`)
       ]);
 
       if (statsData.success) setStats(statsData.stats);
@@ -146,9 +166,34 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
       if (equipmentData.success) setEquipment(equipmentData.equipment);
       if (issuesData.success) setIssues(issuesData.issues);
       if (contractorsData.success) setContractors(contractorsData.contractors);
+      if ([statsData, facilitiesData, equipmentData, issuesData, contractorsData].some((item) => item?.error)) {
+        const firstError = [statsData, facilitiesData, equipmentData, issuesData, contractorsData]
+          .map((item) => item?.error)
+          .find(Boolean);
+        if (firstError) {
+          toast.error(firstError);
+        }
+      }
     } catch (error) {
       console.error('Dashboard load error:', error);
       toast.error('Failed to load dashboard data');
+    }
+  };
+
+  const loadNotificationCount = async () => {
+    if (!accessToken) return;
+    try {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/notifications`, {
+        headers: { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey },
+        cache: 'no-store'
+      });
+      const data = await response.json();
+      if (data.success) {
+        const unreadCount = (data.notifications || []).filter((item: any) => !item.read).length;
+        setUnreadNotifications(unreadCount);
+      }
+    } catch (error) {
+      console.error('Load notification count error:', error);
     }
   };
 
@@ -388,50 +433,146 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     .toUpperCase();
 
   const totalEquipmentCount = Math.max(stats?.totalEquipment || 0, equipment.length);
+  const tabTitles: Record<string, string> = {
+    issues: 'Issues',
+    equipment: 'Equipment',
+    procedures: 'Procedures',
+    consumables: 'Consumables',
+    contractors: 'Contractors'
+  };
+  const pageTitle = tabTitles[activeTab] || 'Issues';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
-              <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-xl font-semibold text-slate-900">Facility Manager Dashboard</h1>
-              <p className="text-xs italic text-emerald-600">Welcome, {user.name}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {companyBindings.length > 1 && (
-              <Select value={companyId} onValueChange={onCompanyChange}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companyBindings.map((binding) => (
-                    <SelectItem key={binding.companyId} value={binding.companyId}>
-                      {binding.companyId}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <Button variant="outline" onClick={onLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+    <SidebarProvider defaultOpen>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex-row gap-0">
+        <Sidebar collapsible="icon" className="border-r border-border bg-sidebar">
+          <SidebarHeader className="gap-3 border-b border-sidebar-border px-4 py-4">
+            <div className="text-sm font-semibold text-slate-900">Facility Operations</div>
+            <div className="text-xs text-slate-500">{companyId}</div>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'issues'} onClick={() => setActiveTab('issues')}>
+                    <AlertCircle />
+                    <span>Issues</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'equipment'} onClick={() => setActiveTab('equipment')}>
+                    <Package />
+                    <span>Equipment</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'procedures'} onClick={() => setActiveTab('procedures')}>
+                    <ClipboardList />
+                    <span>Procedures</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'consumables'} onClick={() => setActiveTab('consumables')}>
+                    <FlaskConical />
+                    <span>Consumables</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === 'contractors'} onClick={() => setActiveTab('contractors')}>
+                    <Users />
+                    <span>Contractors</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroup>
+            <SidebarSeparator />
+          </SidebarContent>
+          <SidebarFooter className="border-t border-sidebar-border px-4 py-4 text-xs text-slate-500">
+            Facility Manager
+          </SidebarFooter>
+        </Sidebar>
 
-      {/* Main Content */}
-      <main className="flex-1 min-h-0">
-        {/* Tabbed Content */}
-        <Tabs defaultValue="issues" className="h-full">
-          <div className="px-6 py-6 space-y-6">
+        <SidebarInset className="min-h-screen bg-background flex flex-col">
+          <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <SidebarTrigger className="md:hidden" />
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button type="button" className="group">
+                      <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-emerald-200">
+                        <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+                        <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
+                      </Avatar>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                      <DialogTitle>Profile settings</DialogTitle>
+                      <DialogDescription>Review your details and contact info.</DialogDescription>
+                    </DialogHeader>
+                    <ProfileSettings
+                      user={user}
+                      role={activeRole}
+                      accessToken={accessToken}
+                      onProfileUpdated={onProfileUpdate}
+                    />
+                  </DialogContent>
+                </Dialog>
+                <div>
+                  <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
+                  <p className="text-xs italic text-emerald-600">{companyId} - Facility Manager</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {companyBindings.length > 1 && (
+                  <Select value={companyId} onValueChange={onCompanyChange}>
+                    <SelectTrigger className="w-[200px]">
+                      <Building2 className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Select company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companyBindings.map((binding) => (
+                        <SelectItem key={binding.companyId} value={binding.companyId}>
+                          {binding.companyId}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" className="relative" aria-label="Notifications">
+                      <Bell className="h-4 w-4" />
+                      {unreadNotifications > 0 && (
+                        <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
+                          {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                        </span>
+                      )}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle>Notifications</DialogTitle>
+                      <DialogDescription>Issue updates and contractor responses.</DialogDescription>
+                    </DialogHeader>
+                    <NotificationsPanel
+                      accessToken={accessToken}
+                      onUnreadCount={setUnreadNotifications}
+                    />
+                  </DialogContent>
+                </Dialog>
+                <Button variant="outline" onClick={onLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-y-auto">
+            <div className="px-6 py-6 space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card>
@@ -483,16 +624,6 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             </CardContent>
           </Card>
         </div>
-
-            <TabsList className="w-full flex flex-wrap items-center gap-2 border border-border bg-white px-2 py-2">
-              <TabsTrigger value="issues" className="justify-start">Issues</TabsTrigger>
-              <TabsTrigger value="equipment" className="justify-start">Equipment</TabsTrigger>
-              <TabsTrigger value="procedures" className="justify-start">Procedures</TabsTrigger>
-              <TabsTrigger value="consumables" className="justify-start">Consumables</TabsTrigger>
-              <TabsTrigger value="contractors" className="justify-start">Contractors</TabsTrigger>
-              <TabsTrigger value="profile" className="justify-start">Profile</TabsTrigger>
-            </TabsList>
-
 
             <TabsContent value="issues" className="space-y-4">
             <Card>
@@ -1078,6 +1209,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 companyId={companyId}
                 accessToken={accessToken}
                 canEdit={activeRole === 'facility_manager' || activeRole === 'company_admin'}
+                canManage={activeRole === 'company_admin'}
                 equipment={equipment}
               />
             </TabsContent>
@@ -1195,17 +1327,8 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             </Card>
           </TabsContent>
 
-            <TabsContent value="profile">
-              <ProfileSettings
-                user={user}
-                role={activeRole}
-                accessToken={accessToken}
-                onProfileUpdated={onProfileUpdate}
-              />
-            </TabsContent>
-          </div>
-        </Tabs>
-      </main>
+            </div>
+          </main>
 
       {/* Issue Detail/Approval Dialog */}
       {selectedIssue && (
@@ -1389,6 +1512,8 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
           </DialogContent>
         </Dialog>
       )}
-    </div>
+        </SidebarInset>
+      </Tabs>
+    </SidebarProvider>
   );
 }
