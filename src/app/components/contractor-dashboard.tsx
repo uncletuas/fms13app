@@ -34,7 +34,8 @@ import {
 } from '@/app/components/ui/sidebar';
 import { toast } from 'sonner';
 import { Wrench, Clock, CheckCircle, AlertCircle, LogOut, Building2, Bell, Search } from 'lucide-react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId } from '/utils/supabase/info';
+import { getAuthHeaders } from '/utils/supabase/auth';
 
 interface ContractorDashboardProps {
   user: any;
@@ -63,6 +64,15 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   const [issueStartDate, setIssueStartDate] = useState('');
   const [issueEndDate, setIssueEndDate] = useState('');
 
+  const buildAuthHeaders = async (extra?: Record<string, string>) => {
+    const { headers, token } = await getAuthHeaders(accessToken);
+    if (!token) {
+      toast.error('Session expired. Please sign in again.');
+      return null;
+    }
+    return { ...headers, ...extra };
+  };
+
   useEffect(() => {
     loadDashboardData();
   }, [companyId]);
@@ -75,11 +85,13 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
       }
 
       try {
+        const headers = await buildAuthHeaders();
+        if (!headers) return;
         const uniqueIds = Array.from(new Set(companyBindings.map((binding) => binding.companyId)));
         const entries = await Promise.all(
           uniqueIds.map(async (id) => {
             const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies/${id}`, {
-              headers: { 'Authorization': `Bearer ${accessToken}`, apikey: publicAnonKey },
+              headers,
               cache: 'no-store'
             });
             const data = await response.json();
@@ -110,8 +122,10 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   const loadNotificationCount = async () => {
     if (!accessToken) return;
     try {
+      const headers = await buildAuthHeaders();
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/notifications`, {
-        headers: { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey },
+        headers,
         cache: 'no-store'
       });
       const data = await response.json();
@@ -142,12 +156,12 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
       setCompany(null);
       return;
     }
-    if (!accessToken) {
-      return;
-    }
 
     try {
-      const authHeaders = { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey };
+      const authHeaders = await buildAuthHeaders();
+      if (!authHeaders) {
+        return;
+      }
       const fetchJson = async (url: string) => {
         try {
           const response = await fetch(url, { headers: authHeaders, cache: 'no-store' });
@@ -185,12 +199,11 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
 
   const handleUpdateIssueStatus = async (issueId: string, newStatus: string) => {
     try {
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues/${issueId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers,
         body: JSON.stringify({ status: newStatus })
       });
 

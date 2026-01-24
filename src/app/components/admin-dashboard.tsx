@@ -42,7 +42,8 @@ import {
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { AlertCircle, Bell, Building2, ClipboardList, FlaskConical, LayoutGrid, LineChart, LogOut, Package, Plus, Search, UserPlus, Users } from 'lucide-react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId } from '/utils/supabase/info';
+import { getAuthHeaders } from '/utils/supabase/auth';
 
 interface AdminDashboardProps {
   user: any;
@@ -93,6 +94,15 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const [managerSearch, setManagerSearch] = useState('');
   const [supervisorSearch, setSupervisorSearch] = useState('');
   const [contractorSearch, setContractorSearch] = useState('');
+
+  const buildAuthHeaders = async (extra?: Record<string, string>) => {
+    const { headers, token } = await getAuthHeaders(accessToken);
+    if (!token) {
+      toast.error('Session expired. Please sign in again.');
+      return null;
+    }
+    return { ...headers, ...extra };
+  };
   
   const [facilityData, setFacilityData] = useState({ 
     name: '', 
@@ -156,10 +166,10 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
 
   const loadDashboardData = async () => {
     try {
-      if (!accessToken) {
+      const authHeaders = await buildAuthHeaders();
+      if (!authHeaders) {
         return;
       }
-      const authHeaders = { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey };
       const fetchJson = async (url: string) => {
         try {
           const response = await fetch(url, { headers: authHeaders, cache: 'no-store' });
@@ -216,8 +226,10 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const loadNotificationCount = async () => {
     if (!accessToken) return;
     try {
+      const headers = await buildAuthHeaders();
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/notifications`, {
-        headers: { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey },
+        headers,
         cache: 'no-store'
       });
       const data = await response.json();
@@ -234,12 +246,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     e.preventDefault();
     
     try {
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/facilities`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers,
         body: JSON.stringify({ ...facilityData, companyId })
       });
 
@@ -268,12 +279,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
         return;
       }
 
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users/facility-manager`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers,
         body: JSON.stringify({ ...fmData, companyId })
       });
 
@@ -314,12 +324,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     }
 
     try {
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users/${selectedFM.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers,
         body: JSON.stringify({
           companyId,
           name: fmEditData.name,
@@ -351,11 +360,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     if (!confirmRemove) return;
 
     try {
+      const headers = await buildAuthHeaders();
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/contractors/${contractorId}?companyId=${companyId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
+        headers
       });
 
       const data = await response.json();
@@ -379,13 +388,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
         toast.error('Select a company before creating a supervisor');
         return;
       }
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users/facility-supervisor`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-          apikey: publicAnonKey
-        },
+        headers,
         body: JSON.stringify({ ...fsData, companyId })
       });
 
@@ -408,14 +415,13 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     const isSuspended = contractor?.binding?.status === 'suspended';
     const reason = isSuspended ? '' : (window.prompt('Reason for suspension (optional):') || '');
     try {
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/contractors/${contractor.id}/${isSuspended ? 'resume' : 'suspend'}`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
-          },
+          headers,
           body: JSON.stringify({ companyId, reason })
         }
       );
@@ -461,12 +467,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     e.preventDefault();
     
     try {
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/users/assign-contractor`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers,
         body: JSON.stringify({ ...contractorAssignment, companyId })
       });
 

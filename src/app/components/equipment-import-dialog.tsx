@@ -6,6 +6,7 @@ import { Label } from '@/app/components/ui/label';
 import { downloadCsv } from '@/app/components/table-export';
 import { toast } from 'sonner';
 import { projectId } from '/utils/supabase/info';
+import { getAuthHeaders } from '/utils/supabase/auth';
 
 const parseCsvText = (csvText: string) => {
   const rows: string[][] = [];
@@ -153,15 +154,18 @@ export function EquipmentImportDialog({
 
     setIsImporting(true);
     try {
+      const { headers, token } = await getAuthHeaders(accessToken);
+      if (!token) {
+        toast.error('Session expired. Please sign in again.');
+        return;
+      }
       const formData = new FormData();
       formData.append('file', file);
       formData.append('companyId', companyId);
 
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment/import`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers,
         body: formData
       });
 

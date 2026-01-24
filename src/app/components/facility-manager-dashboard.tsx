@@ -40,7 +40,8 @@ import {
 } from '@/app/components/ui/sidebar';
 import { toast } from 'sonner';
 import { AlertCircle, Bell, Building2, CheckCircle, ClipboardList, FlaskConical, LogOut, Package, Plus, Search, Users } from 'lucide-react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId } from '/utils/supabase/info';
+import { getAuthHeaders } from '/utils/supabase/auth';
 
 interface FacilityManagerDashboardProps {
   user: any;
@@ -111,6 +112,15 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   const [contractorStartDate, setContractorStartDate] = useState('');
   const [contractorEndDate, setContractorEndDate] = useState('');
 
+  const buildAuthHeaders = async (extra?: Record<string, string>) => {
+    const { headers, token } = await getAuthHeaders(accessToken);
+    if (!token) {
+      toast.error('Session expired. Please sign in again.');
+      return null;
+    }
+    return { ...headers, ...extra };
+  };
+
   useEffect(() => {
     if (companyId) {
       loadDashboardData();
@@ -137,10 +147,10 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
 
   const loadDashboardData = async () => {
     try {
-      if (!accessToken) {
+      const authHeaders = await buildAuthHeaders();
+      if (!authHeaders) {
         return;
       }
-      const authHeaders = { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey };
       const fetchJson = async (url: string) => {
         try {
           const response = await fetch(url, { headers: authHeaders, cache: 'no-store' });
@@ -185,8 +195,10 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   const loadNotificationCount = async () => {
     if (!accessToken) return;
     try {
+      const headers = await buildAuthHeaders();
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/notifications`, {
-        headers: { Authorization: `Bearer ${accessToken}`, apikey: publicAnonKey },
+        headers,
         cache: 'no-store'
       });
       const data = await response.json();
@@ -203,12 +215,11 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     e.preventDefault();
     
     try {
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers,
         body: JSON.stringify({ ...equipmentData, companyId })
       });
 
@@ -262,12 +273,11 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             taskType: 'equipment'
           };
 
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers,
         body: JSON.stringify(payload)
       });
 
@@ -289,12 +299,11 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
 
   const handleApproveIssue = async (issueId: string) => {
     try {
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues/${issueId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers,
         body: JSON.stringify({
           status: 'approved',
           feedback: issueUpdateData.feedback,
@@ -320,12 +329,11 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
 
   const handleAssignContractor = async (issueId: string, contractorId: string) => {
     try {
+      const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+      if (!headers) return;
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/issues/${issueId}/assign`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
+        headers,
         body: JSON.stringify({ contractorId })
       });
 
