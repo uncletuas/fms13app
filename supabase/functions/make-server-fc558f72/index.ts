@@ -445,7 +445,7 @@ const updateVendorMetrics = async (params: {
 
 const getContractorStatus = async (companyId?: string, contractorId?: string) => {
   if (!companyId || !contractorId) return 'active';
-  const binding = await kv.get(`user-company:${contractorId}:${companyId}`);
+  const binding = await checkCompanyAccess(contractorId, companyId);
   return binding?.status || 'active';
 };
 
@@ -540,10 +540,74 @@ const getUserProfile = async (userId: string) => {
   return await ensureShortId(profile);
 };
 
+const normalizeCompanyBinding = (row: any) => ({
+  userId: row.user_id,
+  companyId: row.company_id,
+  role: row.role,
+  facilityIds: row.facility_ids || [],
+  assignedAt: row.created_at || new Date().toISOString(),
+});
+
+const loadCompanyBindingFromDb = async (userId: string, companyId: string) => {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data, error } = await supabaseAdmin
+      .from('fms13_company_users')
+      .select('company_id, user_id, role, facility_ids, created_at')
+      .eq('company_id', companyId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error || !data) {
+      return null;
+    }
+    return normalizeCompanyBinding(data);
+  } catch (error) {
+    console.log('Load company binding error:', error);
+    return null;
+  }
+};
+
+const loadCompanyBindingsFromDb = async (userId: string) => {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data, error } = await supabaseAdmin
+      .from('fms13_company_users')
+      .select('company_id, user_id, role, facility_ids, created_at')
+      .eq('user_id', userId);
+    if (error || !data) {
+      return [];
+    }
+    return data.map(normalizeCompanyBinding);
+  } catch (error) {
+    console.log('Load company bindings error:', error);
+    return [];
+  }
+};
+
+const getCompanyBindings = async (userId: string) => {
+  const bindings = await kv.getByPrefix(`user-company:${userId}:`);
+  if (bindings && bindings.length > 0) {
+    return bindings;
+  }
+  const dbBindings = await loadCompanyBindingsFromDb(userId);
+  for (const binding of dbBindings) {
+    await kv.set(`user-company:${userId}:${binding.companyId}`, binding);
+  }
+  return dbBindings;
+};
+
 // Check user access to company
 const checkCompanyAccess = async (userId: string, companyId: string) => {
   const binding = await kv.get(`user-company:${userId}:${companyId}`);
-  return binding;
+  if (binding) {
+    return binding;
+  }
+  const dbBinding = await loadCompanyBindingFromDb(userId, companyId);
+  if (dbBinding) {
+    await kv.set(`user-company:${userId}:${companyId}`, dbBinding);
+    return dbBinding;
+  }
+  return null;
 };
 
 const sanitizeFileName = (name: string) => {
@@ -943,7 +1007,7 @@ app.post("/make-server-fc558f72/auth/signin", async (c) => {
     };
 
     // Get all company bindings for this user
-    const allBindings = await kv.getByPrefix(`user-company:${data.user.id}:`);
+    const allBindings = await getCompanyBindings(data.user.id);
 
     return c.json({ 
       success: true,
@@ -1180,7 +1244,7 @@ app.get("/make-server-fc558f72/auth/session", async (c) => {
       name: user.user_metadata?.name,
       shortId: fallbackShortId
     };
-    const allBindings = await kv.getByPrefix(`user-company:${user.id}:`);
+    const allBindings = await getCompanyBindings(user.id);
 
     return c.json({ 
       success: true,
