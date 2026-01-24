@@ -14,6 +14,7 @@ interface UserDetailModalProps {
 export function UserDetailModal({ isOpen, onClose, userId, accessToken }: UserDetailModalProps) {
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const displayId = profile?.shortId || (profile?.id ? profile.id.slice(0, 6).toUpperCase() : '');
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -63,7 +64,7 @@ export function UserDetailModal({ isOpen, onClose, userId, accessToken }: UserDe
               </div>
               <div>
                 <h3 className="text-lg font-semibold">{profile.name}</h3>
-                <p className="text-sm text-slate-500">ID: {profile.id}</p>
+                <p className="text-sm text-slate-500">ID: {displayId}</p>
               </div>
             </div>
 

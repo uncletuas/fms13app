@@ -443,8 +443,8 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             <div className="flex items-center gap-3 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-2">
               <Dialog>
                 <DialogTrigger asChild>
-                  <button type="button" className="group">
-                    <Avatar className="h-12 w-12 border border-white/20 bg-white/10 shadow-[0_12px_24px_-16px_rgba(15,23,42,0.7)] group-data-[collapsible=icon]:mx-auto">
+                  <button type="button" className="group flex items-center justify-center rounded-2xl p-1">
+                    <Avatar className="h-11 w-11 border border-white/20 bg-white/10 shadow-[0_12px_24px_-16px_rgba(15,23,42,0.7)] group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10">
                       <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
                       <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">{initials}</AvatarFallback>
                     </Avatar>
@@ -508,7 +508,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             </SidebarGroup>
             <SidebarSeparator />
           </SidebarContent>
-          <SidebarFooter className="border-t border-sidebar-border px-6 py-4 text-xs text-white/60">
+          <SidebarFooter className="border-t border-sidebar-border px-6 py-4 text-xs text-white/60 group-data-[collapsible=icon]:hidden">
             Facility Manager
           </SidebarFooter>
         </Sidebar>

@@ -17,6 +17,7 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
   const [invitations, setInvitations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const contractorId = user?.shortId || (user?.id ? user.id.slice(0, 6).toUpperCase() : '');
 
   useEffect(() => {
     loadInvitations();
@@ -111,7 +112,7 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
             </p>
             <div className="bg-white/80 p-4 rounded-2xl mb-4 border border-slate-200/70 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.5)]">
               <p className="text-sm text-slate-600 mb-1">Your Contractor ID</p>
-              <p className="font-mono text-lg font-semibold">{user.id}</p>
+              <p className="font-mono text-lg font-semibold">{contractorId}</p>
             </div>
             <Button onClick={onLogout} variant="outline" className="w-full">
               Logout

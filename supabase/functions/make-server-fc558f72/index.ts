@@ -71,6 +71,103 @@ const generateId = (prefix: string) => {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
+const generateShortId = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+
+const reserveShortId = async (userId: string) => {
+  if (!userId) return '';
+  const existingProfile = await kv.get(`user:${userId}`);
+  if (existingProfile?.shortId) {
+    const normalized = String(existingProfile.shortId).toUpperCase();
+    const mapped = await kv.get(`user-short:${normalized}`);
+    if (!mapped) {
+      await kv.set(`user-short:${normalized}`, userId);
+    }
+    return normalized;
+  }
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const shortId = generateShortId();
+    const taken = await kv.get(`user-short:${shortId}`);
+    if (!taken) {
+      await kv.set(`user-short:${shortId}`, userId);
+      return shortId;
+    }
+  }
+  const fallback = generateShortId();
+  await kv.set(`user-short:${fallback}`, userId);
+  return fallback;
+};
+
+const ensureShortId = async (profile: any) => {
+  if (!profile?.id) return profile;
+  if (profile.shortId) return profile;
+  const shortId = await reserveShortId(profile.id);
+  const updated = { ...profile, shortId };
+  await kv.set(`user:${profile.id}`, updated);
+  return updated;
+};
+
+const resolveUserId = async (value: string) => {
+  if (!value) return value;
+  const trimmed = value.trim();
+  if (trimmed.length === 6) {
+    const mapped = await kv.get(`user-short:${trimmed.toUpperCase()}`);
+    if (mapped) {
+      return mapped;
+    }
+  }
+  return trimmed;
+};
+
+const ensureUserProfile = async (user: any) => {
+  if (!user?.id) return null;
+  const existing = await kv.get(`user:${user.id}`);
+  if (existing) {
+    return await ensureShortId(existing);
+  }
+  const shortId = await reserveShortId(user.id);
+  const profile = {
+    id: user.id,
+    email: user.email || '',
+    name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+    phone: '',
+    createdAt: new Date().toISOString(),
+    createdBy: user.id,
+    isGlobalUser: true,
+    shortId
+  };
+  await kv.set(`user:${user.id}`, profile);
+  await upsertUserProfile(profile);
+  return profile;
+};
+
+const createAuthUser = async (params: { email: string; password: string; metadata?: Record<string, any> }) => {
+  const adminKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  if (adminKey) {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email: params.email,
+      password: params.password,
+      user_metadata: params.metadata || {},
+      email_confirm: true
+    });
+    if (!error && data?.user) {
+      return { user: data.user, session: null, error: null };
+    }
+    console.log('Admin create user failed, falling back to signUp:', error?.message || error);
+  }
+
+  const supabaseClient = getSupabaseClient();
+  const { data, error } = await supabaseClient.auth.signUp({
+    email: params.email,
+    password: params.password,
+    options: { data: params.metadata || {} }
+  });
+  if (error || !data.user) {
+    return { user: null, session: null, error: error?.message || 'Signup failed' };
+  }
+  return { user: data.user, session: data.session || null, error: null };
+};
+
 const upsertRecord = async (table: string, values: any, options?: { onConflict?: string }) => {
   try {
     const supabaseAdmin = getSupabaseAdmin();
@@ -436,7 +533,11 @@ const logActivity = async (params: {
 
 // Get user profile with company context
 const getUserProfile = async (userId: string) => {
-  return await kv.get(`user:${userId}`);
+  const profile = await kv.get(`user:${userId}`);
+  if (!profile) {
+    return null;
+  }
+  return await ensureShortId(profile);
 };
 
 // Check user access to company
@@ -716,45 +817,43 @@ app.post("/make-server-fc558f72/auth/signup", async (c) => {
       return c.json({ error: 'Missing required fields' }, 400);
     }
 
-    const supabase = getSupabaseAdmin();
-    
-    const { data, error } = await supabase.auth.admin.createUser({
+    const { user: createdUser, error: createError } = await createAuthUser({
       email,
       password,
-      user_metadata: { name },
-      // Automatically confirm the user's email since an email server hasn't been configured.
-      email_confirm: true
+      metadata: { name }
     });
 
-    if (error) {
-      console.log('Signup error:', error);
-      return c.json({ error: error.message }, 400);
+    if (createError || !createdUser) {
+      console.log('Signup error:', createError);
+      return c.json({ error: createError || 'Signup failed' }, 400);
     }
 
     // Store user profile in KV (global user)
     const userProfile = {
-      id: data.user.id,
+      id: createdUser.id,
       email,
       name,
       phone: phone || '',
       createdAt: new Date().toISOString(),
-      createdBy: data.user.id,
+      createdBy: createdUser.id,
       isGlobalUser: true,
       // Contractor-specific fields
       skills: skills || [],
       specialization: specialization || '',
       profileComplete: !!(skills && specialization)
     };
+    const shortId = await reserveShortId(createdUser.id);
+    const finalizedProfile = { ...userProfile, shortId };
 
-    await kv.set(`user:${data.user.id}`, userProfile);
-    await upsertUserProfile(userProfile);
+    await kv.set(`user:${createdUser.id}`, finalizedProfile);
+    await upsertUserProfile(finalizedProfile);
 
     // Log account creation
     await logActivity({
       entityType: 'user',
-      entityId: data.user.id,
+      entityId: createdUser.id,
       action: 'account_created',
-      userId: data.user.id,
+      userId: createdUser.id,
       userName: name,
       userRole: 'new_user',
       details: { email, timestamp: new Date().toISOString() }
@@ -762,16 +861,16 @@ app.post("/make-server-fc558f72/auth/signup", async (c) => {
 
     // If role and companyId provided, create user-company binding
     if (role && companyId) {
-      await kv.set(`user-company:${data.user.id}:${companyId}`, {
-        userId: data.user.id,
+      await kv.set(`user-company:${createdUser.id}:${companyId}`, {
+        userId: createdUser.id,
         companyId,
         role,
         assignedAt: new Date().toISOString(),
-        assignedBy: data.user.id,
+        assignedBy: createdUser.id,
         facilityIds: [], // For facility managers
       });
       await upsertCompanyUser({
-        userId: data.user.id,
+        userId: createdUser.id,
         companyId,
         role,
         assignedAt: new Date().toISOString(),
@@ -781,25 +880,26 @@ app.post("/make-server-fc558f72/auth/signup", async (c) => {
       // Log activity
       await logActivity({
         entityType: 'user',
-        entityId: data.user.id,
-        action: 'user_created',
-        userId: data.user.id,
-        userName: name,
-        userRole: role,
-        companyId,
-        details: { email, role }
-      });
+      entityId: createdUser.id,
+      action: 'user_created',
+      userId: createdUser.id,
+      userName: name,
+      userRole: role,
+      companyId,
+      details: { email, role }
+    });
     }
 
     return c.json({ 
       success: true, 
       user: { 
-        id: data.user.id, 
+        id: createdUser.id, 
         email, 
         name,
         phone: phone || '',
         skills: skills || [],
-        specialization: specialization || ''
+        specialization: specialization || '',
+        shortId
       } 
     });
   } catch (error) {
@@ -832,8 +932,15 @@ app.post("/make-server-fc558f72/auth/signin", async (c) => {
       return c.json({ error: 'Login failed' }, 401);
     }
 
-    // Get user profile
-    const userProfile = await kv.get(`user:${data.user.id}`);
+    // Get or create user profile
+    const userProfile = await ensureUserProfile(data.user);
+    const fallbackShortId = userProfile?.shortId || await reserveShortId(data.user.id);
+    const fallbackProfile = userProfile || {
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.user_metadata?.name,
+      shortId: fallbackShortId
+    };
 
     // Get all company bindings for this user
     const allBindings = await kv.getByPrefix(`user-company:${data.user.id}:`);
@@ -843,11 +950,7 @@ app.post("/make-server-fc558f72/auth/signin", async (c) => {
       accessToken: data.session.access_token,
       refreshToken: data.session.refresh_token,
       expiresIn: data.session.expires_in,
-      user: userProfile || {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.user_metadata?.name,
-      },
+      user: fallbackProfile,
       companyBindings: allBindings
     });
   } catch (error) {
@@ -864,22 +967,19 @@ app.post("/make-server-fc558f72/onboarding/company-admin", async (c) => {
     if (!company?.name || !admin?.email || !admin?.password || !admin?.name) {
       return c.json({ error: 'Company name and admin details required' }, 400);
     }
-
-    const supabaseAdmin = getSupabaseAdmin();
-
-    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    const { user: createdUser, session: createdSession, error: createError } = await createAuthUser({
       email: admin.email,
       password: admin.password,
-      user_metadata: { name: admin.name, role: 'company_admin' },
-      email_confirm: true
+      metadata: { name: admin.name, role: 'company_admin' }
     });
 
-    if (createError || !created.user) {
+    if (createError || !createdUser) {
       console.log('Company admin signup error:', createError);
-      return c.json({ error: createError?.message || 'Signup failed' }, 400);
+      return c.json({ error: createError || 'Signup failed' }, 400);
     }
 
-    const userId = created.user.id;
+    const userId = createdUser.id;
+    const shortId = await reserveShortId(userId);
     const userProfile = {
       id: userId,
       email: admin.email,
@@ -889,11 +989,10 @@ app.post("/make-server-fc558f72/onboarding/company-admin", async (c) => {
       createdAt: new Date().toISOString(),
       createdBy: userId,
       isGlobalUser: true,
+      shortId
     };
 
     await kv.set(`user:${userId}`, userProfile);
-    await upsertUserProfile(userProfile);
-    await upsertUserProfile(userProfile);
     await upsertUserProfile(userProfile);
 
     const companyId = generateId('COM');
@@ -920,7 +1019,6 @@ app.post("/make-server-fc558f72/onboarding/company-admin", async (c) => {
 
     await kv.set(`user-company:${userId}:${companyId}`, binding);
     await upsertCompanyUser(binding);
-    await upsertCompanyUser(binding);
 
     await logActivity({
       entityType: 'company',
@@ -944,22 +1042,32 @@ app.post("/make-server-fc558f72/onboarding/company-admin", async (c) => {
       details: { email: admin.email }
     });
 
-    const supabaseClient = getSupabaseClient();
-    const { data: sessionData, error: sessionError } = await supabaseClient.auth.signInWithPassword({
-      email: admin.email,
-      password: admin.password,
-    });
+    let accessToken = createdSession?.access_token || null;
+    let refreshToken = createdSession?.refresh_token || null;
+    let expiresIn = createdSession?.expires_in || null;
 
-    if (sessionError || !sessionData.session?.access_token) {
-      console.log('Company admin session error:', sessionError);
-      return c.json({ error: 'Login failed' }, 401);
+    if (!accessToken) {
+      const supabaseClient = getSupabaseClient();
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.signInWithPassword({
+        email: admin.email,
+        password: admin.password,
+      });
+
+      if (sessionError || !sessionData.session?.access_token) {
+        console.log('Company admin session error:', sessionError);
+        return c.json({ error: 'Login failed' }, 401);
+      }
+
+      accessToken = sessionData.session.access_token;
+      refreshToken = sessionData.session.refresh_token;
+      expiresIn = sessionData.session.expires_in;
     }
 
     return c.json({
       success: true,
-      accessToken: sessionData.session.access_token,
-      refreshToken: sessionData.session.refresh_token,
-      expiresIn: sessionData.session.expires_in,
+      accessToken,
+      refreshToken,
+      expiresIn,
       user: userProfile,
       company: companyRecord,
       companyId,
@@ -979,22 +1087,19 @@ app.post("/make-server-fc558f72/onboarding/contractor", async (c) => {
     if (!email || !password || !name) {
       return c.json({ error: 'Missing required fields' }, 400);
     }
-
-    const supabaseAdmin = getSupabaseAdmin();
-
-    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    const { user: createdUser, session: createdSession, error: createError } = await createAuthUser({
       email,
       password,
-      user_metadata: { name, role: 'contractor' },
-      email_confirm: true
+      metadata: { name, role: 'contractor' }
     });
 
-    if (createError || !created.user) {
+    if (createError || !createdUser) {
       console.log('Contractor signup error:', createError);
-      return c.json({ error: createError?.message || 'Signup failed' }, 400);
+      return c.json({ error: createError || 'Signup failed' }, 400);
     }
 
-    const userId = created.user.id;
+    const userId = createdUser.id;
+    const shortId = await reserveShortId(userId);
     const userProfile = {
       id: userId,
       email,
@@ -1006,10 +1111,12 @@ app.post("/make-server-fc558f72/onboarding/contractor", async (c) => {
       isGlobalUser: true,
       skills: skills || [],
       specialization: specialization || '',
-      profileComplete: !!(skills && specialization)
+      profileComplete: !!(skills && specialization),
+      shortId
     };
 
     await kv.set(`user:${userId}`, userProfile);
+    await upsertUserProfile(userProfile);
 
     await logActivity({
       entityType: 'user',
@@ -1021,22 +1128,32 @@ app.post("/make-server-fc558f72/onboarding/contractor", async (c) => {
       details: { email }
     });
 
-    const supabaseClient = getSupabaseClient();
-    const { data: sessionData, error: sessionError } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password,
-    });
+    let accessToken = createdSession?.access_token || null;
+    let refreshToken = createdSession?.refresh_token || null;
+    let expiresIn = createdSession?.expires_in || null;
 
-    if (sessionError || !sessionData.session?.access_token) {
-      console.log('Contractor session error:', sessionError);
-      return c.json({ error: 'Login failed' }, 401);
+    if (!accessToken) {
+      const supabaseClient = getSupabaseClient();
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (sessionError || !sessionData.session?.access_token) {
+        console.log('Contractor session error:', sessionError);
+        return c.json({ error: 'Login failed' }, 401);
+      }
+
+      accessToken = sessionData.session.access_token;
+      refreshToken = sessionData.session.refresh_token;
+      expiresIn = sessionData.session.expires_in;
     }
 
     return c.json({
       success: true,
-      accessToken: sessionData.session.access_token,
-      refreshToken: sessionData.session.refresh_token,
-      expiresIn: sessionData.session.expires_in,
+      accessToken,
+      refreshToken,
+      expiresIn,
       user: userProfile,
       companyBindings: []
     });
@@ -1055,16 +1172,19 @@ app.get("/make-server-fc558f72/auth/session", async (c) => {
       return c.json({ error: 'No active session' }, 401);
     }
 
-    const userProfile = await kv.get(`user:${user.id}`);
+    const userProfile = await ensureUserProfile(user);
+    const fallbackShortId = userProfile?.shortId || await reserveShortId(user.id);
+    const fallbackProfile = userProfile || {
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata?.name,
+      shortId: fallbackShortId
+    };
     const allBindings = await kv.getByPrefix(`user-company:${user.id}:`);
 
     return c.json({ 
       success: true,
-      user: userProfile || {
-        id: user.id,
-        email: user.email,
-        name: user.user_metadata?.name,
-      },
+      user: fallbackProfile,
       companyBindings: allBindings
     });
   } catch (error) {
@@ -1113,7 +1233,10 @@ app.post("/make-server-fc558f72/companies", async (c) => {
       assignedAt: new Date().toISOString(),
     });
 
-    const userProfile = await kv.get(`user:${user.id}`);
+    const userProfile = await ensureUserProfile(user);
+    if (!userProfile) {
+      return c.json({ error: 'User profile not found' }, 404);
+    }
 
     // Log activity
     await logActivity({
@@ -1143,7 +1266,10 @@ app.get("/make-server-fc558f72/companies", async (c) => {
     }
 
     // Check if system admin
-    const userProfile = await kv.get(`user:${user.id}`);
+    const userProfile = await ensureUserProfile(user);
+    if (!userProfile) {
+      return c.json({ error: 'User profile not found' }, 404);
+    }
     const allBindings = await kv.getByPrefix(`user-company:${user.id}:`);
     
     // System admin can see all, otherwise only companies they belong to
@@ -1214,7 +1340,10 @@ app.post("/make-server-fc558f72/facilities", async (c) => {
       return c.json({ error: 'Only company admins can create facilities' }, 403);
     }
 
-    const userProfile = await kv.get(`user:${user.id}`);
+    const userProfile = await ensureUserProfile(user);
+    if (!userProfile) {
+      return c.json({ error: 'User profile not found' }, 404);
+    }
 
     const facilityId = generateId('FAC');
     const facility = {
@@ -1356,8 +1485,24 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
       return c.json({ error: 'Only facility managers and company admins can create equipment' }, 403);
     }
 
-    const userProfile = await kv.get(`user:${user.id}`);
+    const userProfile = await ensureUserProfile(user);
+    if (!userProfile) {
+      return c.json({ error: 'User profile not found' }, 404);
+    }
+
     const facility = await kv.get(`facility:${facilityId}`);
+    if (!facility || facility.companyId !== companyId) {
+      return c.json({ error: 'Facility not found for this company' }, 404);
+    }
+
+    let resolvedContractorId: string | null = null;
+    if (contractorId) {
+      resolvedContractorId = await resolveUserId(String(contractorId));
+      const contractorProfile = await kv.get(`user:${resolvedContractorId}`);
+      if (!contractorProfile) {
+        return c.json({ error: 'Assigned contractor not found' }, 404);
+      }
+    }
 
     const equipmentId = generateId('EQP');
     const equipment = {
@@ -1371,7 +1516,7 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
       warrantyPeriod: warrantyPeriod || '',
       facilityId,
       companyId,
-      contractorId: contractorId || null,
+      contractorId: resolvedContractorId || null,
       location: location || '',
       status: 'active',
       healthStatus: 'green',
@@ -1531,6 +1676,17 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
           importSerialKeys.add(serialKey);
         }
 
+        const contractorIdRaw = normalizedRow.contractorid || normalizedRow.contractor_id || '';
+        let resolvedContractorId = '';
+        if (contractorIdRaw) {
+          resolvedContractorId = await resolveUserId(String(contractorIdRaw));
+          const contractorProfile = await kv.get(`user:${resolvedContractorId}`);
+          if (!contractorProfile) {
+            errors.push({ row: index + 2, error: 'assigned contractor not found' });
+            continue;
+          }
+        }
+
         const equipmentId = generateId('EQP');
         const equipment = {
           id: equipmentId,
@@ -1541,7 +1697,7 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
           serialNumber: serialNumberRaw || '',
         installDate: normalizedRow.installdate || normalizedRow.install_date || '',
         warrantyPeriod: normalizedRow.warrantyperiod || normalizedRow.warranty_period || '',
-        contractorId: normalizedRow.contractorid || normalizedRow.contractor_id || '',
+        contractorId: resolvedContractorId || null,
         location: normalizedRow.location || '',
         companyId,
         facilityId: facility.id,
@@ -3254,6 +3410,10 @@ app.post("/make-server-fc558f72/issues/:id/assign", async (c) => {
 
     const issueId = c.req.param('id');
     const { contractorId } = await c.req.json();
+    const resolvedContractorId = await resolveUserId(contractorId);
+    if (!resolvedContractorId) {
+      return c.json({ error: 'Contractor ID required' }, 400);
+    }
     
     const issue = await kv.get(`issue:${issueId}`);
     if (!issue) {
@@ -3272,20 +3432,25 @@ app.post("/make-server-fc558f72/issues/:id/assign", async (c) => {
         return c.json({ error: 'Cannot reassign a completed or closed issue' }, 400);
       }
 
-      const contractorStatus = await getContractorStatus(issue.companyId, contractorId);
+      const contractorProfile = await kv.get(`user:${resolvedContractorId}`);
+      if (!contractorProfile) {
+        return c.json({ error: 'Contractor not found' }, 404);
+      }
+
+      const contractorStatus = await getContractorStatus(issue.companyId, resolvedContractorId);
       if (contractorStatus === 'suspended') {
         return c.json({ error: 'Contractor is suspended for this company' }, 403);
       }
 
       const previousAssignee = issue.assignedTo || null;
-      const isReassign = previousAssignee && previousAssignee !== contractorId;
+      const isReassign = previousAssignee && previousAssignee !== resolvedContractorId;
       const assignedAt = new Date().toISOString();
       const emailDecisionToken = generateId('TOK');
       const emailDecisionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const updatedIssue = {
       ...issue,
-      assignedTo: contractorId,
+      assignedTo: resolvedContractorId,
       status: 'assigned',
       assignedAt,
       emailDecisionToken,
@@ -3306,7 +3471,7 @@ app.post("/make-server-fc558f72/issues/:id/assign", async (c) => {
       await upsertIssueRecord(updatedIssue);
       await updateVendorMetrics({
         companyId: issue.companyId,
-        contractorId,
+        contractorId: resolvedContractorId,
         incrementTotal: true
       });
 
@@ -3319,7 +3484,7 @@ app.post("/make-server-fc558f72/issues/:id/assign", async (c) => {
       userName: userProfile.name,
       userRole: binding.role,
       companyId: issue.companyId,
-      details: { contractorId, previousAssignee }
+      details: { contractorId: resolvedContractorId, previousAssignee }
     });
     if (issue.equipmentId) {
       await logActivity({
@@ -3330,7 +3495,7 @@ app.post("/make-server-fc558f72/issues/:id/assign", async (c) => {
         userName: userProfile.name,
         userRole: binding.role,
         companyId: issue.companyId,
-        details: { issueId, contractorId, previousAssignee }
+        details: { issueId, contractorId: resolvedContractorId, previousAssignee }
       });
     }
 
@@ -3338,7 +3503,7 @@ app.post("/make-server-fc558f72/issues/:id/assign", async (c) => {
     const notificationId = generateId('NOT');
     await kv.set(`notification:${notificationId}`, {
       id: notificationId,
-      userId: contractorId,
+      userId: resolvedContractorId,
       companyId: issue.companyId,
       message: `New issue assigned: ${issue.equipmentName} - ${issue.description}`,
       type: 'new_assignment',
@@ -3348,7 +3513,7 @@ app.post("/make-server-fc558f72/issues/:id/assign", async (c) => {
       timestamp: new Date().toISOString()
     });
 
-    const contractorEmail = await getUserEmail(contractorId);
+    const contractorEmail = await getUserEmail(resolvedContractorId);
       if (contractorEmail) {
         const decisionLinks = buildDecisionLinks(issueId, emailDecisionToken);
         await sendEmail({
@@ -3419,45 +3584,51 @@ app.post("/make-server-fc558f72/users/facility-manager", async (c) => {
       return c.json({ error: 'Only company admins can create facility managers' }, 403);
     }
 
-    const supabase = getSupabaseAdmin();
-    
-    const { data, error: createError } = await supabase.auth.admin.createUser({
+    const { user: createdUser, error: createError } = await createAuthUser({
       email,
       password,
-      user_metadata: { name },
-      email_confirm: true
+      metadata: { name, role: 'facility_manager' }
     });
 
-    if (createError) {
+    if (createError || !createdUser) {
       console.log('Create facility manager error:', createError);
-      return c.json({ error: createError.message }, 400);
+      return c.json({ error: createError || 'Signup failed' }, 400);
     }
 
-    // Store user profile
-    await kv.set(`user:${data.user.id}`, {
-      id: data.user.id,
+    const shortId = await reserveShortId(createdUser.id);
+    const managerProfile = {
+      id: createdUser.id,
       email,
       name,
+      role: 'facility_manager',
       phone: phone || '',
       createdAt: new Date().toISOString(),
-      isGlobalUser: true
-    });
+      createdBy: user.id,
+      isGlobalUser: true,
+      shortId
+    };
 
-    // Create company binding
-    await kv.set(`user-company:${data.user.id}:${companyId}`, {
-      userId: data.user.id,
+    await kv.set(`user:${createdUser.id}`, managerProfile);
+    await upsertUserProfile(managerProfile);
+
+    const managerBinding = {
+      userId: createdUser.id,
       companyId,
       role: 'facility_manager',
       facilityIds: facilityIds || [],
       assignedAt: new Date().toISOString(),
-    });
+      assignedBy: user.id
+    };
+
+    await kv.set(`user-company:${createdUser.id}:${companyId}`, managerBinding);
+    await upsertCompanyUser(managerBinding);
 
     const userProfile = await kv.get(`user:${user.id}`);
 
     // Log activity
     await logActivity({
       entityType: 'user',
-      entityId: data.user.id,
+      entityId: createdUser.id,
       action: 'facility_manager_created',
       userId: user.id,
       userName: userProfile.name,
@@ -3468,7 +3639,7 @@ app.post("/make-server-fc558f72/users/facility-manager", async (c) => {
 
     return c.json({ 
       success: true, 
-      user: { id: data.user.id, email, name, phone: phone || '' } 
+      user: { id: createdUser.id, email, name, phone: phone || '', shortId } 
     });
   } catch (error) {
     console.log('Create facility manager exception:', error);
@@ -3495,21 +3666,19 @@ app.post("/make-server-fc558f72/users/facility-supervisor", async (c) => {
       return c.json({ error: 'Only company admins can create facility supervisors' }, 403);
     }
 
-    const supabase = getSupabaseAdmin();
-
-    const { data: created, error: createError } = await supabase.auth.admin.createUser({
+    const { user: createdUser, error: createError } = await createAuthUser({
       email,
       password,
-      user_metadata: { name, role: 'facility_supervisor' },
-      email_confirm: true
+      metadata: { name, role: 'facility_supervisor' }
     });
 
-    if (createError || !created.user) {
+    if (createError || !createdUser) {
       console.log('Create facility supervisor error:', createError);
-      return c.json({ error: createError?.message || 'Signup failed' }, 400);
+      return c.json({ error: createError || 'Signup failed' }, 400);
     }
 
-    const userId = created.user.id;
+    const userId = createdUser.id;
+    const shortId = await reserveShortId(userId);
     const userProfile = {
       id: userId,
       email,
@@ -3519,6 +3688,7 @@ app.post("/make-server-fc558f72/users/facility-supervisor", async (c) => {
       createdAt: new Date().toISOString(),
       createdBy: user.id,
       isGlobalUser: true,
+      shortId
     };
 
     await kv.set(`user:${userId}`, userProfile);
@@ -3564,8 +3734,9 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
     }
 
     const { contractorId, companyId, facilityIds, categories } = await c.req.json();
+    const resolvedContractorId = await resolveUserId(contractorId);
     
-    if (!contractorId || !companyId) {
+    if (!resolvedContractorId || !companyId) {
       return c.json({ error: 'Contractor ID and company ID required' }, 400);
     }
 
@@ -3576,7 +3747,7 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
     }
 
     // Check if contractor user exists
-    const contractorProfile = await kv.get(`user:${contractorId}`);
+    const contractorProfile = await kv.get(`user:${resolvedContractorId}`);
     if (!contractorProfile) {
       return c.json({ error: 'Contractor not found. Please ensure they have registered.' }, 404);
     }
@@ -3589,7 +3760,7 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
     const emailDecisionToken = generateId('TOK');
     const invitation = {
       id: invitationId,
-      contractorId,
+        contractorId: resolvedContractorId,
       companyId,
       companyName: company.name,
       facilityIds: facilityIds || [],
@@ -3607,7 +3778,7 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
     const notificationId = generateId('NOT');
     await kv.set(`notification:${notificationId}`, {
       id: notificationId,
-      userId: contractorId,
+      userId: resolvedContractorId,
       companyId,
       message: `${company.name} has invited you to join as a contractor`,
       type: 'contractor_invitation',
@@ -3619,7 +3790,7 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
     // Log activity
     await logActivity({
       entityType: 'user',
-      entityId: contractorId,
+      entityId: resolvedContractorId,
       action: 'contractor_invited',
       userId: user.id,
       userName: userProfile.name,
@@ -3628,7 +3799,7 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
       details: { invitationId, contractorName: contractorProfile.name }
     });
 
-    const contractorEmail = await getUserEmail(contractorId);
+    const contractorEmail = await getUserEmail(resolvedContractorId);
     if (contractorEmail) {
       const actionUrl = `${ACTION_BASE_URL}/contractor-invitations/${invitationId}/respond-email?token=${encodeURIComponent(emailDecisionToken)}`;
       const invitationEmail = buildInvitationEmail({
@@ -3679,8 +3850,9 @@ app.get("/make-server-fc558f72/contractors", async (c) => {
       const contractors = await Promise.all(
         companyContractorBindings.map(async (binding: any) => {
           const profile = await kv.get(`user:${binding.userId}`);
+          const safeProfile = profile ? await ensureShortId(profile) : null;
           return {
-            ...profile,
+            ...(safeProfile || { id: binding.userId }),
             binding: {
               facilityIds: binding.facilityIds,
               categories: binding.categories,
@@ -3718,7 +3890,11 @@ app.get("/make-server-fc558f72/contractors", async (c) => {
         .filter((b: any) => b.role === 'contractor')
         .map((b: any) => b.userId);
       
-      const contractors = allUsers.filter((u: any) => contractorUserIds.includes(u.id));
+      const contractors = await Promise.all(
+        allUsers
+          .filter((u: any) => contractorUserIds.includes(u.id))
+          .map(async (u: any) => await ensureShortId(u))
+      );
 
       return c.json({ success: true, contractors });
     }
@@ -3737,9 +3913,13 @@ app.post("/make-server-fc558f72/contractors/:contractorId/suspend", async (c) =>
     }
 
     const contractorId = c.req.param('contractorId');
+    const resolvedContractorId = await resolveUserId(contractorId);
     const { companyId, reason } = await c.req.json();
     if (!companyId) {
       return c.json({ error: 'Company ID required' }, 400);
+    }
+    if (!resolvedContractorId) {
+      return c.json({ error: 'Contractor ID required' }, 400);
     }
 
     const adminBinding = await checkCompanyAccess(user.id, companyId);
@@ -3747,7 +3927,7 @@ app.post("/make-server-fc558f72/contractors/:contractorId/suspend", async (c) =>
       return c.json({ error: 'Company admin access required' }, 403);
     }
 
-    const contractorBinding = await kv.get(`user-company:${contractorId}:${companyId}`);
+    const contractorBinding = await kv.get(`user-company:${resolvedContractorId}:${companyId}`);
     if (!contractorBinding || contractorBinding.role !== 'contractor') {
       return c.json({ error: 'Contractor not found for this company' }, 404);
     }
@@ -3761,10 +3941,10 @@ app.post("/make-server-fc558f72/contractors/:contractorId/suspend", async (c) =>
       suspensionReason: reason || ''
     };
 
-    await kv.set(`user-company:${contractorId}:${companyId}`, updatedBinding);
+    await kv.set(`user-company:${resolvedContractorId}:${companyId}`, updatedBinding);
     await upsertCompanyContractor({
       companyId,
-      contractorId,
+      contractorId: resolvedContractorId,
       status: 'suspended',
       suspendedAt,
       suspendedBy: user.id,
@@ -3774,7 +3954,7 @@ app.post("/make-server-fc558f72/contractors/:contractorId/suspend", async (c) =>
     const adminProfile = await kv.get(`user:${user.id}`);
     await logActivity({
       entityType: 'user',
-      entityId: contractorId,
+      entityId: resolvedContractorId,
       action: 'contractor_suspended',
       userId: user.id,
       userName: adminProfile?.name || 'Admin',
@@ -3786,7 +3966,7 @@ app.post("/make-server-fc558f72/contractors/:contractorId/suspend", async (c) =>
     const notificationId = generateId('NOT');
     await kv.set(`notification:${notificationId}`, {
       id: notificationId,
-      userId: contractorId,
+      userId: resolvedContractorId,
       companyId,
       message: 'Your contractor access has been suspended by the company admin.',
       type: 'contractor_suspended',
@@ -3810,9 +3990,13 @@ app.post("/make-server-fc558f72/contractors/:contractorId/resume", async (c) => 
     }
 
     const contractorId = c.req.param('contractorId');
+    const resolvedContractorId = await resolveUserId(contractorId);
     const { companyId } = await c.req.json();
     if (!companyId) {
       return c.json({ error: 'Company ID required' }, 400);
+    }
+    if (!resolvedContractorId) {
+      return c.json({ error: 'Contractor ID required' }, 400);
     }
 
     const adminBinding = await checkCompanyAccess(user.id, companyId);
@@ -3820,7 +4004,7 @@ app.post("/make-server-fc558f72/contractors/:contractorId/resume", async (c) => 
       return c.json({ error: 'Company admin access required' }, 403);
     }
 
-    const contractorBinding = await kv.get(`user-company:${contractorId}:${companyId}`);
+    const contractorBinding = await kv.get(`user-company:${resolvedContractorId}:${companyId}`);
     if (!contractorBinding || contractorBinding.role !== 'contractor') {
       return c.json({ error: 'Contractor not found for this company' }, 404);
     }
@@ -3835,10 +4019,10 @@ app.post("/make-server-fc558f72/contractors/:contractorId/resume", async (c) => 
       suspensionReason: ''
     };
 
-    await kv.set(`user-company:${contractorId}:${companyId}`, updatedBinding);
+    await kv.set(`user-company:${resolvedContractorId}:${companyId}`, updatedBinding);
     await upsertCompanyContractor({
       companyId,
-      contractorId,
+      contractorId: resolvedContractorId,
       status: 'active',
       resumedAt,
       suspendedAt: null,
@@ -3849,7 +4033,7 @@ app.post("/make-server-fc558f72/contractors/:contractorId/resume", async (c) => 
     const adminProfile = await kv.get(`user:${user.id}`);
     await logActivity({
       entityType: 'user',
-      entityId: contractorId,
+      entityId: resolvedContractorId,
       action: 'contractor_resumed',
       userId: user.id,
       userName: adminProfile?.name || 'Admin',
@@ -3861,7 +4045,7 @@ app.post("/make-server-fc558f72/contractors/:contractorId/resume", async (c) => 
     const notificationId = generateId('NOT');
     await kv.set(`notification:${notificationId}`, {
       id: notificationId,
-      userId: contractorId,
+      userId: resolvedContractorId,
       companyId,
       message: 'Your contractor access has been restored.',
       type: 'contractor_resumed',
@@ -3885,10 +4069,14 @@ app.delete("/make-server-fc558f72/contractors/:contractorId", async (c) => {
     }
 
     const contractorId = c.req.param('contractorId');
+    const resolvedContractorId = await resolveUserId(contractorId);
     const companyId = c.req.query('companyId');
 
     if (!companyId) {
       return c.json({ error: 'Company ID required' }, 400);
+    }
+    if (!resolvedContractorId) {
+      return c.json({ error: 'Contractor ID required' }, 400);
     }
 
     const binding = await checkCompanyAccess(user.id, companyId);
@@ -3896,16 +4084,16 @@ app.delete("/make-server-fc558f72/contractors/:contractorId", async (c) => {
       return c.json({ error: 'Company admin access required' }, 403);
     }
 
-    const contractorBinding = await kv.get(`user-company:${contractorId}:${companyId}`);
+    const contractorBinding = await kv.get(`user-company:${resolvedContractorId}:${companyId}`);
     if (!contractorBinding || contractorBinding.role !== 'contractor') {
       return c.json({ error: 'Contractor not found for this company' }, 404);
     }
 
-    await kv.del(`user-company:${contractorId}:${companyId}`);
+    await kv.del(`user-company:${resolvedContractorId}:${companyId}`);
 
     const allIssues = await kv.getByPrefix('issue:');
     const assignedIssues = allIssues.filter((issue: any) => 
-      issue.companyId === companyId && issue.assignedTo === contractorId
+      issue.companyId === companyId && issue.assignedTo === resolvedContractorId
     );
 
     for (const issue of assignedIssues) {
@@ -3919,7 +4107,7 @@ app.delete("/make-server-fc558f72/contractors/:contractorId", async (c) => {
 
     const allEquipment = await kv.getByPrefix('equipment:');
     const assignedEquipment = allEquipment.filter((eq: any) => 
-      eq.companyId === companyId && eq.contractorId === contractorId
+      eq.companyId === companyId && eq.contractorId === resolvedContractorId
     );
 
     for (const eq of assignedEquipment) {
@@ -3933,13 +4121,13 @@ app.delete("/make-server-fc558f72/contractors/:contractorId", async (c) => {
     const adminProfile = await kv.get(`user:${user.id}`);
     await logActivity({
       entityType: 'user',
-      entityId: contractorId,
+      entityId: resolvedContractorId,
       action: 'contractor_removed',
       userId: user.id,
       userName: adminProfile?.name || 'Admin',
       userRole: 'company_admin',
       companyId,
-      details: { contractorId, reassignedIssues: assignedIssues.length, unassignedEquipment: assignedEquipment.length }
+      details: { contractorId: resolvedContractorId, reassignedIssues: assignedIssues.length, unassignedEquipment: assignedEquipment.length }
     });
 
     return c.json({ success: true });
@@ -3977,8 +4165,9 @@ app.get("/make-server-fc558f72/users", async (c) => {
     const users = await Promise.all(
       companyBindings.map(async (binding: any) => {
         const profile = await kv.get(`user:${binding.userId}`);
+        const safeProfile = profile ? await ensureShortId(profile) : null;
         return {
-          ...profile,
+          ...(safeProfile || { id: binding.userId }),
           role: binding.role,
           facilityIds: binding.facilityIds,
           categories: binding.categories
@@ -4002,6 +4191,7 @@ app.put("/make-server-fc558f72/users/:id", async (c) => {
     }
 
     const userId = c.req.param('id');
+    const resolvedUserId = await resolveUserId(userId);
     const { companyId, name, phone, facilityIds, password } = await c.req.json();
 
     if (!companyId) {
@@ -4013,12 +4203,16 @@ app.put("/make-server-fc558f72/users/:id", async (c) => {
       return c.json({ error: 'Company admin access required' }, 403);
     }
 
-    const targetBinding = await kv.get(`user-company:${userId}:${companyId}`);
+    if (!resolvedUserId) {
+      return c.json({ error: 'User ID required' }, 400);
+    }
+
+    const targetBinding = await kv.get(`user-company:${resolvedUserId}:${companyId}`);
     if (!targetBinding || targetBinding.role !== 'facility_manager') {
       return c.json({ error: 'Facility manager not found for this company' }, 404);
     }
 
-    const targetProfile = await kv.get(`user:${userId}`);
+    const targetProfile = await kv.get(`user:${resolvedUserId}`);
     if (!targetProfile) {
       return c.json({ error: 'User profile not found' }, 404);
     }
@@ -4030,18 +4224,18 @@ app.put("/make-server-fc558f72/users/:id", async (c) => {
         updatedAt: new Date().toISOString()
       };
 
-      await kv.set(`user:${userId}`, updatedProfile);
+      await kv.set(`user:${resolvedUserId}`, updatedProfile);
       await upsertUserProfile(updatedProfile);
 
       if (Array.isArray(facilityIds)) {
-        await kv.set(`user-company:${userId}:${companyId}`, {
+        await kv.set(`user-company:${resolvedUserId}:${companyId}`, {
           ...targetBinding,
           facilityIds
         });
         await upsertCompanyUser({
           ...targetBinding,
           companyId,
-          userId,
+          userId: resolvedUserId,
           facilityIds,
           assignedAt: targetBinding.assignedAt,
         });
@@ -4049,21 +4243,21 @@ app.put("/make-server-fc558f72/users/:id", async (c) => {
 
     if (password) {
       const supabaseAdmin = getSupabaseAdmin();
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(resolvedUserId, { password });
       if (updateError) {
         return c.json({ error: updateError.message }, 400);
       }
     }
 
     const supabaseAdmin = getSupabaseAdmin();
-    await supabaseAdmin.auth.admin.updateUserById(userId, {
+    await supabaseAdmin.auth.admin.updateUserById(resolvedUserId, {
       user_metadata: { name: updatedProfile.name }
     });
 
     const adminProfile = await kv.get(`user:${user.id}`);
     await logActivity({
       entityType: 'user',
-      entityId: userId,
+      entityId: resolvedUserId,
       action: 'facility_manager_updated',
       userId: user.id,
       userName: adminProfile?.name || 'Admin',
@@ -4387,8 +4581,9 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
     }
 
     const { contractorId, companyId, facilityIds, categories } = await c.req.json();
+    const resolvedContractorId = await resolveUserId(contractorId);
     
-    if (!contractorId || !companyId) {
+    if (!resolvedContractorId || !companyId) {
       return c.json({ error: 'Contractor ID and company ID required' }, 400);
     }
 
@@ -4399,20 +4594,20 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
     }
 
     // Check if contractor user exists
-    const contractorProfile = await kv.get(`user:${contractorId}`);
+    const contractorProfile = await kv.get(`user:${resolvedContractorId}`);
     if (!contractorProfile) {
       return c.json({ error: 'Contractor not found' }, 404);
     }
 
     // Check if already invited or assigned
-    const existingBinding = await kv.get(`user-company:${contractorId}:${companyId}`);
+    const existingBinding = await kv.get(`user-company:${resolvedContractorId}:${companyId}`);
     if (existingBinding) {
       return c.json({ error: 'Contractor already assigned to this company' }, 400);
     }
 
     const allInvitations = await kv.getByPrefix('contractor-invitation:');
     const existingInvitation = allInvitations.find((inv: any) => 
-      inv.contractorId === contractorId && 
+      inv.contractorId === resolvedContractorId && 
       inv.companyId === companyId && 
       inv.status === 'pending'
     );
@@ -4428,7 +4623,7 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
     const emailDecisionToken = generateId('TOK');
     const invitation = {
       id: invitationId,
-      contractorId,
+      contractorId: resolvedContractorId,
       companyId,
       companyName: company.name,
       facilityIds: facilityIds || [],
@@ -4446,7 +4641,7 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
     const notificationId = generateId('NOT');
     await kv.set(`notification:${notificationId}`, {
       id: notificationId,
-      userId: contractorId,
+      userId: resolvedContractorId,
       companyId,
       message: `${company.name} has invited you to join as a contractor`,
       type: 'contractor_invitation',
@@ -4458,7 +4653,7 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
     // Log activity
     await logActivity({
       entityType: 'user',
-      entityId: contractorId,
+      entityId: resolvedContractorId,
       action: 'contractor_invited',
       userId: user.id,
       userName: userProfile.name,
@@ -4467,7 +4662,7 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
       details: { invitationId, contractorName: contractorProfile.name }
     });
 
-    const contractorEmail = await getUserEmail(contractorId);
+    const contractorEmail = await getUserEmail(resolvedContractorId);
     if (contractorEmail) {
       const actionUrl = `${ACTION_BASE_URL}/contractor-invitations/${invitationId}/respond-email?token=${encodeURIComponent(emailDecisionToken)}`;
       const invitationEmail = buildInvitationEmail({
@@ -4842,7 +5037,7 @@ app.put("/make-server-fc558f72/profile", async (c) => {
 
     const { name, phone, skills, specialization, avatarUrl, avatarPath } = await c.req.json();
 
-    const userProfile = await kv.get(`user:${user.id}`);
+    const userProfile = await ensureUserProfile(user);
     if (!userProfile) {
       return c.json({ error: 'User profile not found' }, 404);
     }
@@ -4979,13 +5174,18 @@ app.get("/make-server-fc558f72/profile/:userId", async (c) => {
     }
 
     const userId = c.req.param('userId');
-    const profile = await kv.get(`user:${userId}`);
+    const resolvedUserId = await resolveUserId(userId);
+    if (!resolvedUserId) {
+      return c.json({ error: 'User ID required' }, 400);
+    }
+    const profile = await kv.get(`user:${resolvedUserId}`);
 
     if (!profile) {
       return c.json({ error: 'Profile not found' }, 404);
     }
 
-    return c.json({ success: true, profile });
+    const safeProfile = await ensureShortId(profile);
+    return c.json({ success: true, profile: safeProfile });
   } catch (error) {
     console.log('Get profile error:', error);
     return c.json({ error: 'Failed to get profile' }, 500);

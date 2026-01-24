@@ -22,6 +22,7 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const isFacilityManager = role === 'facility_manager';
+  const contractorId = profile?.shortId || (profile?.id ? profile.id.slice(0, 6).toUpperCase() : '');
 
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -38,7 +39,7 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
 
   const handleCopyId = async () => {
     try {
-      await navigator.clipboard.writeText(profile?.id);
+      await navigator.clipboard.writeText(contractorId);
       toast.success('Contractor ID copied');
     } catch (error) {
       toast.error('Unable to copy ID');
@@ -251,7 +252,7 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2 text-sm shadow-[0_10px_24px_-18px_rgba(15,23,42,0.5)]">
-                <span className="font-mono text-slate-700">{profile?.id}</span>
+                <span className="font-mono text-slate-700">{contractorId}</span>
                 <Button size="sm" variant="outline" onClick={handleCopyId}>
                   <Copy className="mr-2 h-4 w-4" />
                   Copy
