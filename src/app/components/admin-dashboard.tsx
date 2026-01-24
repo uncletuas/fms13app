@@ -6,7 +6,7 @@ import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Badge } from '@/app/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
-import { Tabs, TabsContent } from '@/app/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { ContactCard } from '@/app/components/contact-card';
 import { Checkbox } from '@/app/components/ui/checkbox';
@@ -41,7 +41,7 @@ import {
 } from '@/app/components/ui/sidebar';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
 import { toast } from 'sonner';
-import { AlertCircle, Bell, Building2, ClipboardList, FlaskConical, LayoutGrid, LineChart, LogOut, Package, Plus, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { AlertCircle, Bell, Building2, ClipboardList, FlaskConical, LayoutGrid, LineChart, LogOut, Package, Plus, Search, UserPlus, Users } from 'lucide-react';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 interface AdminDashboardProps {
@@ -65,7 +65,9 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const [contractors, setContractors] = useState<any[]>([]);
   const [company, setCompany] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [teamTab, setTeamTab] = useState('managers');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [globalSearch, setGlobalSearch] = useState('');
   
   const [isCreateFacilityOpen, setIsCreateFacilityOpen] = useState(false);
   const [isCreateFMOpen, setIsCreateFMOpen] = useState(false);
@@ -87,8 +89,6 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const [equipmentEndDate, setEquipmentEndDate] = useState('');
 
   const [facilitySearch, setFacilitySearch] = useState('');
-  const [facilityStartDate, setFacilityStartDate] = useState('');
-  const [facilityEndDate, setFacilityEndDate] = useState('');
 
   const [managerSearch, setManagerSearch] = useState('');
   const [supervisorSearch, setSupervisorSearch] = useState('');
@@ -391,16 +391,16 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
 
       const data = await response.json();
       if (data.success) {
-        toast.success('Facility Supervisor created successfully');
+        toast.success('Company Supervisor created successfully');
         setIsCreateFSOpen(false);
         setFsData({ email: '', password: '', name: '', phone: '' });
         loadDashboardData();
       } else {
-        toast.error(data.error || 'Failed to create Facility Supervisor');
+        toast.error(data.error || 'Failed to create Company Supervisor');
       }
     } catch (error) {
       console.error('Create supervisor error:', error);
-      toast.error('Failed to create Facility Supervisor');
+      toast.error('Failed to create Company Supervisor');
     }
   };
 
@@ -548,8 +548,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
       || `${facility.name} ${facility.location || ''} ${facility.address || ''} ${facility.id}`
         .toLowerCase()
         .includes(facilityQuery);
-    const matchesDate = inDateRange(facility.createdAt, facilityStartDate, facilityEndDate);
-    return matchesQuery && matchesDate;
+    return matchesQuery;
   });
 
   const managerQuery = managerSearch.trim().toLowerCase();
@@ -585,35 +584,42 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     .map((part: string) => part[0])
     .join('')
     .toUpperCase();
-  const tabTitles: Record<string, string> = {
-    overview: 'Overview',
-    facilities: 'Facilities',
-    equipment: 'Equipment',
-    issues: 'Issues',
-    reports: 'Reports',
-    procedures: 'Procedures',
-    consumables: 'Consumables',
-    team: 'Team'
-  };
-  const pageTitle = tabTitles[activeTab] || 'Overview';
-  const roleLabel = isReadOnly ? 'Facility Supervisor' : 'Company Admin';
+  const roleLabel = isReadOnly ? 'Company Supervisor' : 'Company Admin';
 
   return (
     <SidebarProvider defaultOpen>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex-row gap-0">
         <Sidebar collapsible="icon" mobileHidden className="border-r border-sidebar-border bg-sidebar">
           <SidebarHeader className="gap-4 border-b border-sidebar-border px-6 py-6">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12 border border-white/20 bg-white/10 shadow-[0_12px_24px_-16px_rgba(15,23,42,0.7)]">
-                <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
-                <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">{initials}</AvatarFallback>
-              </Avatar>
-              <div>
+            <div className="flex items-center gap-3 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button type="button" className="group">
+                    <Avatar className="h-12 w-12 border border-white/20 bg-white/10 shadow-[0_12px_24px_-16px_rgba(15,23,42,0.7)] group-data-[collapsible=icon]:mx-auto">
+                      <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+                      <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">{initials}</AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl">
+                  <DialogHeader>
+                    <DialogTitle>Profile settings</DialogTitle>
+                    <DialogDescription>Review and update your personal details.</DialogDescription>
+                  </DialogHeader>
+                  <ProfileSettings
+                    user={user}
+                    role={user?.role || (isReadOnly ? 'facility_supervisor' : 'company_admin')}
+                    accessToken={accessToken}
+                    onProfileUpdated={onProfileUpdate}
+                  />
+                </DialogContent>
+              </Dialog>
+              <div className="group-data-[collapsible=icon]:hidden">
                 <div className="text-sm font-semibold text-white">{user?.name || 'Admin'}</div>
                 <div className="text-xs text-white/70">{company?.name || companyId}</div>
               </div>
             </div>
-            <div className="text-[11px] uppercase tracking-[0.3em] text-white/50">{roleLabel}</div>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-white/50 group-data-[collapsible=icon]:hidden">{roleLabel}</div>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
@@ -678,38 +684,21 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
 
         <SidebarInset className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-6 py-4 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <SidebarTrigger className="hidden md:inline-flex" />
-            <Dialog>
-              <DialogTrigger asChild>
-                <button type="button" className="group">
-                  <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-primary/20">
-                    <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
-                    <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
-                  </Avatar>
-                </button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl">
-                <DialogHeader>
-                  <DialogTitle>Profile settings</DialogTitle>
-                  <DialogDescription>Review and update your personal details.</DialogDescription>
-                </DialogHeader>
-                <ProfileSettings
-                  user={user}
-                  role={user?.role || (isReadOnly ? 'facility_supervisor' : 'company_admin')}
-                  accessToken={accessToken}
-                  onProfileUpdated={onProfileUpdate}
+        <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-6 py-4 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-1 items-center gap-3">
+              <SidebarTrigger className="hidden md:inline-flex" />
+              <div className="flex w-full max-w-md items-center gap-2 rounded-full border border-slate-200/70 bg-white/80 px-3 py-2 shadow-sm">
+                <Search className="h-4 w-4 text-slate-400" />
+                <Input
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  placeholder="Search equipment, issues, contractors..."
+                  className="h-6 border-0 bg-transparent p-0 text-sm text-slate-700 focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
-              </DialogContent>
-            </Dialog>
-            <div>
-              <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
-              <p className="text-xs text-slate-500">{company?.name || 'Loading...'} - {roleLabel}</p>
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
             {companyBindings.length > 1 && (
               <Select value={companyId} onValueChange={onCompanyChange}>
                 <SelectTrigger className="w-[200px]">
@@ -758,6 +747,8 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
         <div className="px-6 py-6 pb-24 space-y-6">
+        {activeTab === 'overview' && (
+          <>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card>
@@ -815,6 +806,8 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </CardContent>
           </Card>
         </div>
+          </>
+        )}
 
             <TabsContent value="overview" className="space-y-6">
             <AdminIntelligencePanel
@@ -1009,24 +1002,6 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       className="h-8"
                     />
                   </div>
-                  <div>
-                    <Label className="text-xs text-slate-500">From</Label>
-                    <Input
-                      type="date"
-                      value={facilityStartDate}
-                      onChange={(e) => setFacilityStartDate(e.target.value)}
-                      className="h-8"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-slate-500">To</Label>
-                    <Input
-                      type="date"
-                      value={facilityEndDate}
-                      onChange={(e) => setFacilityEndDate(e.target.value)}
-                      className="h-8"
-                    />
-                  </div>
                   <Button
                     variant="outline"
                     className="h-8"
@@ -1055,7 +1030,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                         { label: 'ID', value: (row: any) => row.id },
                       ] as ExportColumn<any>[],
                       filteredFacilities,
-                      `${facilityStartDate || 'All'} to ${facilityEndDate || 'All'}`
+                      'All time'
                     )}
                   >
                     Print PDF
@@ -1400,6 +1375,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
           <TabsContent value="reports" className="space-y-4">
             <ReportsPanel
               companyId={companyId}
+              facilities={facilities}
               equipment={equipment}
               issues={issues}
               contractors={contractors}
@@ -1424,339 +1400,107 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
               />
             </TabsContent>
 
-          <TabsContent value="team" className="space-y-4">
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              {/* Facility Managers */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Facility Managers</CardTitle>
-                      <CardDescription className="text-xs text-slate-500">Manage facility staff</CardDescription>
-                    </div>
-                    {!isReadOnly && (
-                    <Dialog open={isCreateFMOpen} onOpenChange={setIsCreateFMOpen}>
-                      <DialogTrigger asChild>
-                        <Button size="sm">
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          Add Manager
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Create Facility Manager</DialogTitle>
-                          <DialogDescription>Add a new facility manager to your team</DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleCreateFacilityManager} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="fm-name">Full Name</Label>
-                            <Input
-                              id="fm-name"
-                              value={fmData.name}
-                              onChange={(e) => setFmData({ ...fmData, name: e.target.value })}
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="fm-email">Email</Label>
-                            <Input
-                              id="fm-email"
-                              type="email"
-                              value={fmData.email}
-                              onChange={(e) => setFmData({ ...fmData, email: e.target.value })}
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="fm-phone">Phone</Label>
-                            <Input
-                              id="fm-phone"
-                              type="tel"
-                              value={fmData.phone}
-                              onChange={(e) => setFmData({ ...fmData, phone: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Assigned Facilities</Label>
-                            {facilities.length === 0 ? (
-                              <p className="text-xs text-slate-500">Create a facility before assigning a manager.</p>
-                            ) : (
-                              <div className="space-y-2">
-                                {facilities.map((facility) => (
-                                  <label key={facility.id} className="flex items-center gap-2 text-sm">
-                                    <Checkbox
-                                      checked={fmData.facilityIds.includes(facility.id)}
-                                      onCheckedChange={() => toggleFacilityAssignment(facility.id)}
-                                    />
-                                    <span>{facility.name}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="fm-password">Password</Label>
-                            <Input
-                              id="fm-password"
-                              type="password"
-                              value={fmData.password}
-                              onChange={(e) => setFmData({ ...fmData, password: e.target.value })}
-                              required
-                              minLength={6}
-                            />
-                          </div>
-                          <Button type="submit" className="w-full">Create Manager</Button>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
-                    )}
-                  </div>
-                  <div className="mt-4 flex flex-wrap items-end gap-3">
-                    <div className="flex-1 min-w-[200px]">
-                      <Label className="text-xs text-slate-500">Search</Label>
-                      <Input
-                        value={managerSearch}
-                        onChange={(e) => setManagerSearch(e.target.value)}
-                        placeholder="Search managers"
-                        className="h-8"
-                      />
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="h-8"
-                      onClick={() => downloadCsv(
-                        `facility-managers-${companyId}.csv`,
-                        [
-                          { label: 'Name', value: (row: any) => row.name },
-                          { label: 'Email', value: (row: any) => row.email || '-' },
-                          { label: 'Phone', value: (row: any) => row.phone || '-' },
-                          { label: 'Facilities', value: (row: any) => row.facilityIds?.length || 0 },
-                        ] as ExportColumn<any>[],
-                        filteredManagers
-                      )}
-                    >
-                      Download CSV
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-8"
-                      onClick={() => printTable(
-                        'Facility Managers',
-                        [
-                          { label: 'Name', value: (row: any) => row.name },
-                          { label: 'Email', value: (row: any) => row.email || '-' },
-                          { label: 'Phone', value: (row: any) => row.phone || '-' },
-                          { label: 'Facilities', value: (row: any) => row.facilityIds?.length || 0 },
-                        ] as ExportColumn<any>[],
-                        filteredManagers
-                      )}
-                    >
-                      Print PDF
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Contact</TableHead>
-                        <TableHead>Facilities</TableHead>
-                        <TableHead>Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredManagers.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center text-sm text-slate-500">
-                            No facility managers yet
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredManagers.map((fm) => (
-                          <TableRow key={fm.id}>
-                            <TableCell>
-                              <div className="font-medium text-slate-900">{fm.name}</div>
-                              <div className="text-xs text-slate-500">{fm.role}</div>
-                            </TableCell>
-                            <TableCell className="text-sm text-slate-600">
-                              <div>{fm.email || '-'}</div>
-                              <div className="text-xs text-slate-500">{fm.phone || '-'}</div>
-                            </TableCell>
-                            <TableCell className="text-sm text-slate-600">
-                              {fm.facilityIds?.length ? `${fm.facilityIds.length} assigned` : '-'}
-                            </TableCell>
-                            <TableCell>
-                              {!isReadOnly && (
-                                <Button size="sm" variant="outline" onClick={() => openEditFacilityManager(fm)}>
-                                  Edit Profile
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                    <TabsContent value="team" className="space-y-4">
+            <Tabs value={teamTab} onValueChange={setTeamTab} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="managers">Facility Managers</TabsTrigger>
+                <TabsTrigger value="supervisors">Company Supervisors</TabsTrigger>
+                <TabsTrigger value="contractors">Contractors</TabsTrigger>
+              </TabsList>
 
-              {/* Facility Supervisors */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Facility Supervisors</CardTitle>
-                      <CardDescription className="text-xs text-slate-500">Read-only oversight</CardDescription>
-                    </div>
-                    {!isReadOnly && (
-                      <Dialog open={isCreateFSOpen} onOpenChange={setIsCreateFSOpen}>
+              <TabsContent value="managers">
+                {/* Facility Managers */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Facility Managers</CardTitle>
+                        <CardDescription className="text-xs text-slate-500">Manage facility staff</CardDescription>
+                      </div>
+                      {!isReadOnly && (
+                      <Dialog open={isCreateFMOpen} onOpenChange={setIsCreateFMOpen}>
                         <DialogTrigger asChild>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm">
                             <UserPlus className="w-4 h-4 mr-2" />
-                            Add Supervisor
+                            Add Manager
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Create Facility Supervisor</DialogTitle>
-                            <DialogDescription>Add a read-only supervisor account</DialogDescription>
+                            <DialogTitle>Create Facility Manager</DialogTitle>
+                            <DialogDescription>Add a new facility manager to your team</DialogDescription>
                           </DialogHeader>
-                          <form onSubmit={handleCreateFacilitySupervisor} className="space-y-4">
+                          <form onSubmit={handleCreateFacilityManager} className="space-y-4">
                             <div className="space-y-2">
-                              <Label htmlFor="fs-name">Full Name</Label>
+                              <Label htmlFor="fm-name">Full Name</Label>
                               <Input
-                                id="fs-name"
-                                value={fsData.name}
-                                onChange={(e) => setFsData({ ...fsData, name: e.target.value })}
+                                id="fm-name"
+                                value={fmData.name}
+                                onChange={(e) => setFmData({ ...fmData, name: e.target.value })}
                                 required
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="fs-email">Email</Label>
+                              <Label htmlFor="fm-email">Email</Label>
                               <Input
-                                id="fs-email"
+                                id="fm-email"
                                 type="email"
-                                value={fsData.email}
-                                onChange={(e) => setFsData({ ...fsData, email: e.target.value })}
+                                value={fmData.email}
+                                onChange={(e) => setFmData({ ...fmData, email: e.target.value })}
                                 required
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="fs-phone">Phone</Label>
+                              <Label htmlFor="fm-phone">Phone</Label>
                               <Input
-                                id="fs-phone"
-                                value={fsData.phone}
-                                onChange={(e) => setFsData({ ...fsData, phone: e.target.value })}
+                                id="fm-phone"
+                                type="tel"
+                                value={fmData.phone}
+                                onChange={(e) => setFmData({ ...fmData, phone: e.target.value })}
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="fs-password">Temporary Password</Label>
+                              <Label>Assigned Facilities</Label>
+                              {facilities.length === 0 ? (
+                                <p className="text-xs text-slate-500">Create a facility before assigning a manager.</p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {facilities.map((facility) => (
+                                    <label key={facility.id} className="flex items-center gap-2 text-sm">
+                                      <Checkbox
+                                        checked={fmData.facilityIds.includes(facility.id)}
+                                        onCheckedChange={() => toggleFacilityAssignment(facility.id)}
+                                      />
+                                      <span>{facility.name}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="fm-password">Password</Label>
                               <Input
-                                id="fs-password"
+                                id="fm-password"
                                 type="password"
-                                value={fsData.password}
-                                onChange={(e) => setFsData({ ...fsData, password: e.target.value })}
+                                value={fmData.password}
+                                onChange={(e) => setFmData({ ...fmData, password: e.target.value })}
                                 required
+                                minLength={6}
                               />
                             </div>
-                            <Button type="submit" className="w-full">Create Supervisor</Button>
+                            <Button type="submit" className="w-full">Create Manager</Button>
                           </form>
                         </DialogContent>
                       </Dialog>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2 pb-3">
-                    <Input
-                      value={supervisorSearch}
-                      onChange={(e) => setSupervisorSearch(e.target.value)}
-                      placeholder="Search supervisors"
-                      className="h-8"
-                    />
-                  </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Contact</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredSupervisors.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={2} className="text-center text-sm text-slate-500">
-                            No supervisors yet
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredSupervisors.map((sup) => (
-                          <TableRow key={sup.id}>
-                            <TableCell>
-                              <div className="font-medium text-slate-900">{sup.name}</div>
-                              <div className="text-xs text-slate-500">{sup.role}</div>
-                            </TableCell>
-                            <TableCell className="text-sm text-slate-600">
-                              <div>{sup.email || '-'}</div>
-                              <div className="text-xs text-slate-500">{sup.phone || '-'}</div>
-                            </TableCell>
-                          </TableRow>
-                        ))
                       )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-
-              {/* Contractors */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Contractors</CardTitle>
-                      <CardDescription className="text-xs text-slate-500">Assigned contractors</CardDescription>
                     </div>
-                    {!isReadOnly && (
-                    <Dialog open={isAssignContractorOpen} onOpenChange={setIsAssignContractorOpen}>
-                      <DialogTrigger asChild>
-                        <Button size="sm">
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          Assign Contractor
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Assign Contractor</DialogTitle>
-                          <DialogDescription>Assign a contractor to your company</DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleAssignContractor} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="contractor-id">Contractor ID</Label>
-                            <Input
-                              id="contractor-id"
-                              value={contractorAssignment.contractorId}
-                              onChange={(e) => setContractorAssignment({ ...contractorAssignment, contractorId: e.target.value })}
-                              placeholder="User ID of contractor"
-                              required
-                            />
-                            <p className="text-xs text-slate-500">Note: Contractor must have an existing account</p>
-                          </div>
-                          <Button type="submit" className="w-full">Assign Contractor</Button>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4 flex flex-wrap items-end gap-3">
+                    <div className="mt-4 flex flex-wrap items-end gap-3">
                       <div className="flex-1 min-w-[200px]">
                         <Label className="text-xs text-slate-500">Search</Label>
                         <Input
-                          value={contractorSearch}
-                          onChange={(e) => setContractorSearch(e.target.value)}
-                          placeholder="Search contractors"
+                          value={managerSearch}
+                          onChange={(e) => setManagerSearch(e.target.value)}
+                          placeholder="Search managers"
                           className="h-8"
                         />
                       </div>
@@ -1764,18 +1508,14 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                         variant="outline"
                         className="h-8"
                         onClick={() => downloadCsv(
-                          `contractors-${companyId}.csv`,
+                          `facility-managers-${companyId}.csv`,
                           [
-                            { label: 'Name', value: (row: any) => row.name },
-                            { label: 'Email', value: (row: any) => row.email || '-' },
-                            { label: 'Phone', value: (row: any) => row.phone || '-' },
-                            {
-                              label: 'Specialization',
-                              value: (row: any) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
-                            },
-                            { label: 'Status', value: (row: any) => row?.binding?.status || 'active' },
-                          ] as ExportColumn<any>[],
-                          filteredContractors
+                            { label: 'Name', value: (row) => row.name },
+                            { label: 'Email', value: (row) => row.email || '-' },
+                            { label: 'Phone', value: (row) => row.phone || '-' },
+                            { label: 'Facilities', value: (row) => row.facilityIds?.length || 0 },
+                          ],
+                          filteredManagers
                         )}
                       >
                         Download CSV
@@ -1783,95 +1523,343 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                       <Button
                         variant="outline"
                         className="h-8"
-                      onClick={() => printTable(
-                        'Contractors',
-                        [
-                          { label: 'Name', value: (row: any) => row.name },
-                          { label: 'Email', value: (row: any) => row.email || '-' },
-                          { label: 'Phone', value: (row: any) => row.phone || '-' },
-                          {
-                            label: 'Specialization',
-                            value: (row: any) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
-                          },
-                          { label: 'Status', value: (row: any) => row?.binding?.status || 'active' },
-                        ] as ExportColumn<any>[],
-                        filteredContractors
-                      )}
-                    >
-                      Print PDF
-                    </Button>
+                        onClick={() => printTable(
+                          'Facility Managers',
+                          [
+                            { label: 'Name', value: (row) => row.name },
+                            { label: 'Email', value: (row) => row.email || '-' },
+                            { label: 'Phone', value: (row) => row.phone || '-' },
+                            { label: 'Facilities', value: (row) => row.facilityIds?.length || 0 },
+                          ],
+                          filteredManagers
+                        )}
+                      >
+                        Print PDF
+                      </Button>
                     </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Contact</TableHead>
-                        <TableHead>Specialization</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Performance</TableHead>
-                        <TableHead>Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredContractors.length === 0 ? (
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-sm text-slate-500">
-                            No contractors assigned
-                          </TableCell>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Contact</TableHead>
+                          <TableHead>Facilities</TableHead>
+                          <TableHead>Action</TableHead>
                         </TableRow>
-                      ) : (
-                        filteredContractors.map((contractor) => (
-                          <TableRow key={contractor.id}>
-                            <TableCell>
-                              <div className="font-medium text-slate-900">{contractor.name}</div>
-                              <div className="text-xs text-slate-500">Contractor</div>
-                            </TableCell>
-                            <TableCell className="text-sm text-slate-600">
-                              <div>{contractor.email || '-'}</div>
-                              <div className="text-xs text-slate-500">{contractor.phone || '-'}</div>
-                            </TableCell>
-                            <TableCell className="text-sm text-slate-600">
-                              {contractor.specialization || (Array.isArray(contractor.skills) ? contractor.skills.join(', ') : contractor.skills) || '-'}
-                            </TableCell>
-                            <TableCell>
-                              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${
-                                contractor?.binding?.status === 'suspended'
-                                  ? 'bg-rose-100 text-rose-700'
-                                  : 'bg-emerald-100 text-emerald-700'
-                              }`}>
-                                {contractor?.binding?.status === 'suspended' ? 'Suspended' : 'Active'}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-xs text-slate-600">
-                              <div>Response: {formatMinutes(contractor.performance?.avg_response_minutes)}</div>
-                              <div>Completion: {formatMinutes(contractor.performance?.avg_completion_minutes)}</div>
-                              <div>Missed SLA: {contractor.performance?.delayed_jobs_count ?? 0}</div>
-                            </TableCell>
-                            <TableCell>
-                              {!isReadOnly && (
-                                <>
-                                  <Button size="sm" variant="destructive" onClick={() => handleRemoveContractor(contractor.id)}>
-                                    Remove
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="ml-2"
-                                    onClick={() => handleToggleContractorStatus(contractor)}
-                                  >
-                                    {contractor?.binding?.status === 'suspended' ? 'Resume' : 'Suspend'}
-                                  </Button>
-                                </>
-                              )}
+                      </TableHeader>
+                      <TableBody>
+                        {filteredManagers.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-sm text-slate-500">
+                              No facility managers yet
                             </TableCell>
                           </TableRow>
-                        ))
+                        ) : (
+                          filteredManagers.map((fm) => (
+                            <TableRow key={fm.id}>
+                              <TableCell>
+                                <div className="font-medium text-slate-900">{fm.name}</div>
+                                <div className="text-xs text-slate-500">{fm.role}</div>
+                              </TableCell>
+                              <TableCell className="text-sm text-slate-600">
+                                <div>{fm.email || '-'}</div>
+                                <div className="text-xs text-slate-500">{fm.phone || '-'}</div>
+                              </TableCell>
+                              <TableCell className="text-sm text-slate-600">
+                                {fm.facilityIds?.length ? `${fm.facilityIds.length} assigned` : '-'}
+                              </TableCell>
+                              <TableCell>
+                                {!isReadOnly && (
+                                  <Button size="sm" variant="outline" onClick={() => openEditFacilityManager(fm)}>
+                                    Edit Profile
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="supervisors">
+                {/* Company Supervisors */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Company Supervisors</CardTitle>
+                        <CardDescription className="text-xs text-slate-500">Read-only oversight</CardDescription>
+                      </div>
+                      {!isReadOnly && (
+                        <Dialog open={isCreateFSOpen} onOpenChange={setIsCreateFSOpen}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline">
+                              <UserPlus className="w-4 h-4 mr-2" />
+                              Add Supervisor
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Create Company Supervisor</DialogTitle>
+                              <DialogDescription>Add a read-only supervisor account</DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleCreateFacilitySupervisor} className="space-y-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="fs-name">Full Name</Label>
+                                <Input
+                                  id="fs-name"
+                                  value={fsData.name}
+                                  onChange={(e) => setFsData({ ...fsData, name: e.target.value })}
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="fs-email">Email</Label>
+                                <Input
+                                  id="fs-email"
+                                  type="email"
+                                  value={fsData.email}
+                                  onChange={(e) => setFsData({ ...fsData, email: e.target.value })}
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="fs-phone">Phone</Label>
+                                <Input
+                                  id="fs-phone"
+                                  value={fsData.phone}
+                                  onChange={(e) => setFsData({ ...fsData, phone: e.target.value })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="fs-password">Temporary Password</Label>
+                                <Input
+                                  id="fs-password"
+                                  type="password"
+                                  value={fsData.password}
+                                  onChange={(e) => setFsData({ ...fsData, password: e.target.value })}
+                                  required
+                                />
+                              </div>
+                              <Button type="submit" className="w-full">Create Supervisor</Button>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
                       )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2 pb-3">
+                      <Input
+                        value={supervisorSearch}
+                        onChange={(e) => setSupervisorSearch(e.target.value)}
+                        placeholder="Search supervisors"
+                        className="h-8"
+                      />
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Contact</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredSupervisors.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={2} className="text-center text-sm text-slate-500">
+                              No supervisors yet
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredSupervisors.map((sup) => (
+                            <TableRow key={sup.id}>
+                              <TableCell>
+                                <div className="font-medium text-slate-900">{sup.name}</div>
+                                <div className="text-xs text-slate-500">{sup.role}</div>
+                              </TableCell>
+                              <TableCell className="text-sm text-slate-600">
+                                <div>{sup.email || '-'}</div>
+                                <div className="text-xs text-slate-500">{sup.phone || '-'}</div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="contractors">
+                {/* Contractors */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Contractors</CardTitle>
+                        <CardDescription className="text-xs text-slate-500">Assigned contractors</CardDescription>
+                      </div>
+                      {!isReadOnly && (
+                      <Dialog open={isAssignContractorOpen} onOpenChange={setIsAssignContractorOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm">
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Assign Contractor
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Assign Contractor</DialogTitle>
+                            <DialogDescription>Assign a contractor to your company</DialogDescription>
+                          </DialogHeader>
+                          <form onSubmit={handleAssignContractor} className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="contractor-id">Contractor ID</Label>
+                              <Input
+                                id="contractor-id"
+                                value={contractorAssignment.contractorId}
+                                onChange={(e) => setContractorAssignment({ ...contractorAssignment, contractorId: e.target.value })}
+                                placeholder="User ID of contractor"
+                                required
+                              />
+                              <p className="text-xs text-slate-500">Note: Contractor must have an existing account</p>
+                            </div>
+                            <Button type="submit" className="w-full">Assign Contractor</Button>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4 flex flex-wrap items-end gap-3">
+                        <div className="flex-1 min-w-[200px]">
+                          <Label className="text-xs text-slate-500">Search</Label>
+                          <Input
+                            value={contractorSearch}
+                            onChange={(e) => setContractorSearch(e.target.value)}
+                            placeholder="Search contractors"
+                            className="h-8"
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="h-8"
+                          onClick={() => downloadCsv(
+                            `contractors-${companyId}.csv`,
+                            [
+                              { label: 'Name', value: (row) => row.name },
+                              { label: 'Email', value: (row) => row.email || '-' },
+                              { label: 'Phone', value: (row) => row.phone || '-' },
+                              {
+                                label: 'Specialization',
+                                value: (row) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
+                              },
+                              { label: 'Status', value: (row) => row?.binding?.status || 'active' },
+                            ],
+                            filteredContractors
+                          )}
+                        >
+                          Download CSV
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8"
+                        onClick={() => printTable(
+                          'Contractors',
+                          [
+                            { label: 'Name', value: (row) => row.name },
+                            { label: 'Email', value: (row) => row.email || '-' },
+                            { label: 'Phone', value: (row) => row.phone || '-' },
+                            {
+                              label: 'Specialization',
+                              value: (row) => row.specialization || (Array.isArray(row.skills) ? row.skills.join(', ') : row.skills) || '-'
+                            },
+                            { label: 'Status', value: (row) => row?.binding?.status || 'active' },
+                          ],
+                          filteredContractors
+                        )}
+                      >
+                        Print PDF
+                      </Button>
+                      </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Contact</TableHead>
+                          <TableHead>Specialization</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Performance</TableHead>
+                          <TableHead>Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredContractors.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-sm text-slate-500">
+                              No contractors assigned
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredContractors.map((contractor) => (
+                            <TableRow key={contractor.id}>
+                              <TableCell>
+                                <div className="font-medium text-slate-900">{contractor.name}</div>
+                                <div className="text-xs text-slate-500">Contractor</div>
+                              </TableCell>
+                              <TableCell className="text-sm text-slate-600">
+                                <div>{contractor.email || '-'}</div>
+                                <div className="text-xs text-slate-500">{contractor.phone || '-'}</div>
+                              </TableCell>
+                              <TableCell className="text-sm text-slate-600">
+                                {contractor.specialization || (Array.isArray(contractor.skills) ? contractor.skills.join(', ') : contractor.skills) || '-'}
+                              </TableCell>
+                              <TableCell>
+                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${
+                                  contractor?.binding?.status === 'suspended'
+                                    ? 'bg-rose-100 text-rose-700'
+                                    : 'bg-emerald-100 text-emerald-700'
+                                }`}>
+                                  {contractor?.binding?.status === 'suspended' ? 'Suspended' : 'Active'}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-xs text-slate-600">
+                                <div>Response: {formatMinutes(contractor.performance?.avg_response_minutes)}</div>
+                                <div>Completion: {formatMinutes(contractor.performance?.avg_completion_minutes)}</div>
+                                <div>Missed SLA: {contractor.performance?.delayed_jobs_count ?? 0}</div>
+                              </TableCell>
+                              <TableCell>
+                                {!isReadOnly && (
+                                  <>
+                                    <Button size="sm" variant="destructive" onClick={() => handleRemoveContractor(contractor.id)}>
+                                      Remove
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="ml-2"
+                                      onClick={() => handleToggleContractorStatus(contractor)}
+                                    >
+                                      {contractor?.binding?.status === 'suspended' ? 'Resume' : 'Suspend'}
+                                    </Button>
+                                  </>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           </div>

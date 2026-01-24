@@ -39,7 +39,7 @@ import {
   SidebarTrigger
 } from '@/app/components/ui/sidebar';
 import { toast } from 'sonner';
-import { AlertCircle, Bell, Building2, CheckCircle, ClipboardList, FlaskConical, LogOut, Package, Plus, Users } from 'lucide-react';
+import { AlertCircle, Bell, Building2, CheckCircle, ClipboardList, FlaskConical, LogOut, Package, Plus, Search, Users } from 'lucide-react';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 interface FacilityManagerDashboardProps {
@@ -59,6 +59,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   const [contractors, setContractors] = useState<any[]>([]);
   const [facilities, setFacilities] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('issues');
+  const [globalSearch, setGlobalSearch] = useState('');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const activeRole = companyBindings.find((binding) => binding.companyId === companyId)?.role || user?.role || 'facility_manager';
   
@@ -434,31 +435,40 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     .toUpperCase();
 
   const totalEquipmentCount = Math.max(stats?.totalEquipment || 0, equipment.length);
-  const tabTitles: Record<string, string> = {
-    issues: 'Issues',
-    equipment: 'Equipment',
-    procedures: 'Procedures',
-    consumables: 'Consumables',
-    contractors: 'Contractors'
-  };
-  const pageTitle = tabTitles[activeTab] || 'Issues';
-
   return (
     <SidebarProvider defaultOpen>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex-row gap-0">
         <Sidebar collapsible="icon" mobileHidden className="border-r border-sidebar-border bg-sidebar">
           <SidebarHeader className="gap-4 border-b border-sidebar-border px-6 py-6">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12 border border-white/20 bg-white/10 shadow-[0_12px_24px_-16px_rgba(15,23,42,0.7)]">
-                <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
-                <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">{initials}</AvatarFallback>
-              </Avatar>
-              <div>
+            <div className="flex items-center gap-3 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button type="button" className="group">
+                    <Avatar className="h-12 w-12 border border-white/20 bg-white/10 shadow-[0_12px_24px_-16px_rgba(15,23,42,0.7)] group-data-[collapsible=icon]:mx-auto">
+                      <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+                      <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">{initials}</AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl">
+                  <DialogHeader>
+                    <DialogTitle>Profile settings</DialogTitle>
+                    <DialogDescription>Review your details and contact info.</DialogDescription>
+                  </DialogHeader>
+                  <ProfileSettings
+                    user={user}
+                    role={activeRole}
+                    accessToken={accessToken}
+                    onProfileUpdated={onProfileUpdate}
+                  />
+                </DialogContent>
+              </Dialog>
+              <div className="group-data-[collapsible=icon]:hidden">
                 <div className="text-sm font-semibold text-white">{user?.name || 'Facility Manager'}</div>
                 <div className="text-xs text-white/70">{companyId}</div>
               </div>
             </div>
-            <div className="text-[11px] uppercase tracking-[0.3em] text-white/50">Facility Manager</div>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-white/50 group-data-[collapsible=icon]:hidden">Facility Manager</div>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
@@ -506,33 +516,16 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
         <SidebarInset className="min-h-screen bg-background flex flex-col">
           <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-6 py-4 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-1 items-center gap-3">
                 <SidebarTrigger className="hidden md:inline-flex" />
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button type="button" className="group">
-                      <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-primary/20">
-                        <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
-                        <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
-                      </Avatar>
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl">
-                    <DialogHeader>
-                      <DialogTitle>Profile settings</DialogTitle>
-                      <DialogDescription>Review your details and contact info.</DialogDescription>
-                    </DialogHeader>
-                    <ProfileSettings
-                      user={user}
-                      role={activeRole}
-                      accessToken={accessToken}
-                      onProfileUpdated={onProfileUpdate}
-                    />
-                  </DialogContent>
-                </Dialog>
-                <div>
-                  <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
-                  <p className="text-xs text-slate-500">{companyId} - Facility Manager</p>
+                <div className="flex w-full max-w-md items-center gap-2 rounded-full border border-slate-200/70 bg-white/80 px-3 py-2 shadow-sm">
+                  <Search className="h-4 w-4 text-slate-400" />
+                  <Input
+                    value={globalSearch}
+                    onChange={(e) => setGlobalSearch(e.target.value)}
+                    placeholder="Search issues, equipment, contractors..."
+                    className="h-6 border-0 bg-transparent p-0 text-sm text-slate-700 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
