@@ -65,7 +65,7 @@ export function IssueTimeline({ issue }: IssueTimelineProps) {
   ];
 
   return (
-    <div className="rounded-md border border-border bg-white p-4">
+    <div className="rounded-2xl border border-white/70 bg-white/90 p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.5)]">
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-slate-900">Execution Timeline</div>
         {issue.slaDeadline && (
@@ -86,19 +86,19 @@ export function IssueTimeline({ issue }: IssueTimelineProps) {
         ))}
       </div>
       <div className="mt-4 grid gap-2 md:grid-cols-4">
-        <div className="rounded-md bg-slate-50 px-3 py-2 text-xs">
+        <div className="rounded-xl bg-slate-50/80 px-3 py-2 text-xs">
           <div className="text-slate-500">Response time</div>
           <div className="font-semibold text-slate-800">{formatDuration(metrics.responseMinutes)}</div>
         </div>
-        <div className="rounded-md bg-slate-50 px-3 py-2 text-xs">
+        <div className="rounded-xl bg-slate-50/80 px-3 py-2 text-xs">
           <div className="text-slate-500">Execution time</div>
           <div className="font-semibold text-slate-800">{formatDuration(metrics.executionMinutes)}</div>
         </div>
-        <div className="rounded-md bg-slate-50 px-3 py-2 text-xs">
+        <div className="rounded-xl bg-slate-50/80 px-3 py-2 text-xs">
           <div className="text-slate-500">Total time</div>
           <div className="font-semibold text-slate-800">{formatDuration(metrics.totalMinutes)}</div>
         </div>
-        <div className="rounded-md bg-slate-50 px-3 py-2 text-xs">
+        <div className="rounded-xl bg-slate-50/80 px-3 py-2 text-xs">
           <div className="text-slate-500">Approval time</div>
           <div className="font-semibold text-slate-800">{formatDuration(metrics.approvalMinutes)}</div>
         </div>

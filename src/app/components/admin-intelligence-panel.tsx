@@ -214,12 +214,12 @@ export function AdminIntelligencePanel({
 
   const chartConfig = {
     created: { label: 'Created', color: '#94a3b8' },
-    completed: { label: 'Completed', color: '#10b981' },
-    green: { label: 'Healthy', color: '#10b981' },
+    completed: { label: 'Completed', color: '#f1a423' },
+    green: { label: 'Healthy', color: '#22c55e' },
     yellow: { label: 'Warning', color: '#f59e0b' },
     red: { label: 'Critical', color: '#ef4444' },
-    response: { label: 'Response', color: '#10b981' },
-    completion: { label: 'Completion', color: '#94a3b8' }
+    response: { label: 'Response', color: '#163a5b' },
+    completion: { label: 'Completion', color: '#7fa4bf' }
   };
 
   return (
@@ -232,7 +232,7 @@ export function AdminIntelligencePanel({
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="text-2xl font-semibold text-slate-900">{slaMetrics.compliance}%</div>
-            <Progress value={slaMetrics.compliance} className="h-2 bg-emerald-100" />
+            <Progress value={slaMetrics.compliance} className="h-2 bg-primary/10" />
             <div className="text-xs text-slate-500">
               {slaMetrics.delayedCount} delayed jobs flagged
             </div>
@@ -335,12 +335,12 @@ export function AdminIntelligencePanel({
             <CardDescription className="text-xs text-slate-500">Completed work by task type</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-4">
-            <ChartContainer config={{ equipment: { label: 'Equipment tasks', color: '#10b981' }, general: { label: 'General tasks', color: '#94a3b8' } }} className="h-[200px] w-[200px]">
+            <ChartContainer config={{ equipment: { label: 'Equipment tasks', color: '#163a5b' }, general: { label: 'General tasks', color: '#f1a423' } }} className="h-[200px] w-[200px]">
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Pie data={costDistribution} dataKey="value" nameKey="name" innerRadius={55} outerRadius={80} paddingAngle={2}>
                   {costDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 0 ? '#10b981' : '#94a3b8'} />
+                    <Cell key={`cell-${index}`} fill={index === 0 ? '#163a5b' : '#f1a423'} />
                   ))}
                 </Pie>
               </PieChart>
@@ -348,7 +348,7 @@ export function AdminIntelligencePanel({
             <div className="space-y-2 text-xs text-slate-600">
               {costDistribution.map((entry, index) => (
                 <div key={entry.name} className="flex items-center gap-2">
-                  <span className={`h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                  <span className={`h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-primary' : 'bg-amber-400'}`} />
                   <span>{entry.name}</span>
                   <span className="font-semibold text-slate-900">NGN {entry.value.toLocaleString()}</span>
                 </div>

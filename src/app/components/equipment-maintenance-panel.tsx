@@ -159,7 +159,7 @@ export function EquipmentMaintenancePanel({ equipmentId, accessToken, canEdit }:
       </Table>
 
       {canEdit && (
-        <div className="rounded-md border border-border bg-white p-3">
+        <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.5)]">
           <div className="text-xs font-semibold text-slate-700">Add schedule</div>
           <div className="mt-3 grid gap-3">
             <div className="space-y-1">

@@ -244,7 +244,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-slate-900">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10 lg:grid-cols-[1.1fr,1fr] lg:items-center">
         <div className="space-y-8">
           <div className="flex items-center gap-3">
@@ -263,25 +263,31 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
           </p>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-lg border border-border/80 bg-white p-4">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              <p className="mt-3 text-sm font-medium text-slate-900">Zero implicit access</p>
-              <p className="mt-2 text-xs text-slate-500">Invitation + approval enforced</p>
-            </div>
-            <div className="rounded-lg border border-border/80 bg-white p-4">
-              <Users className="h-5 w-5 text-primary" />
-              <p className="mt-3 text-sm font-medium text-slate-900">Multi-branch control</p>
-              <p className="mt-2 text-xs text-slate-500">Company, facilities, roles</p>
-            </div>
-            <div className="rounded-lg border border-border/80 bg-white p-4">
-              <Wrench className="h-5 w-5 text-primary" />
-              <p className="mt-3 text-sm font-medium text-slate-900">Contractor workflows</p>
-              <p className="mt-2 text-xs text-slate-500">Accept, execute, report</p>
-            </div>
+            <Card className="border border-white/70">
+              <CardContent className="p-4">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <p className="mt-3 text-sm font-medium text-slate-900">Zero implicit access</p>
+                <p className="mt-2 text-xs text-slate-500">Invitation + approval enforced</p>
+              </CardContent>
+            </Card>
+            <Card className="border border-white/70">
+              <CardContent className="p-4">
+                <Users className="h-5 w-5 text-primary" />
+                <p className="mt-3 text-sm font-medium text-slate-900">Multi-branch control</p>
+                <p className="mt-2 text-xs text-slate-500">Company, facilities, roles</p>
+              </CardContent>
+            </Card>
+            <Card className="border border-white/70">
+              <CardContent className="p-4">
+                <Wrench className="h-5 w-5 text-primary" />
+                <p className="mt-3 text-sm font-medium text-slate-900">Contractor workflows</p>
+                <p className="mt-2 text-xs text-slate-500">Accept, execute, report</p>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        <Card className="border-border/80 bg-white text-slate-900 shadow-none">
+        <Card className="border-white/70 bg-white/90 text-slate-900">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold">Secure Access</CardTitle>
             <CardDescription>Sign in or register with the correct role.</CardDescription>

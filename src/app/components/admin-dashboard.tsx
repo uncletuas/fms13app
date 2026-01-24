@@ -23,6 +23,7 @@ import { ProceduresPanel } from '@/app/components/procedures-panel';
 import { ConsumablesPanel } from '@/app/components/consumables-panel';
 import { ProcedureChecklistPanel } from '@/app/components/procedure-checklist-panel';
 import { NotificationsPanel } from '@/app/components/notifications-panel';
+import { MobileBottomNav } from '@/app/components/mobile-bottom-nav';
 import {
   Sidebar,
   SidebarContent,
@@ -494,10 +495,10 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
       escalated: { label: 'Escalated', className: 'bg-red-100 text-red-800' },
       completed: { label: 'Completed', className: 'bg-green-100 text-green-800' },
       approved: { label: 'Approved', className: 'bg-teal-100 text-teal-800' },
-      closed: { label: 'Closed', className: 'bg-gray-100 text-gray-800' },
+      closed: { label: 'Closed', className: 'bg-slate-100 text-slate-700 border border-slate-200/70' },
     };
 
-    const config = statusConfig[status] || { label: status, className: 'bg-gray-100 text-gray-800' };
+    const config = statusConfig[status] || { label: status, className: 'bg-slate-100 text-slate-700 border border-slate-200/70' };
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -600,15 +601,19 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   return (
     <SidebarProvider defaultOpen>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex-row gap-0">
-        <Sidebar collapsible="icon" className="border-r border-border bg-sidebar">
-          <SidebarHeader className="gap-3 border-b border-sidebar-border px-4 py-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-                <ShieldCheck className="h-4 w-4" />
-              </span>
-              FMS.13 Admin
+        <Sidebar collapsible="icon" mobileHidden className="border-r border-sidebar-border bg-sidebar">
+          <SidebarHeader className="gap-4 border-b border-sidebar-border px-6 py-6">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12 border border-white/20 bg-white/10 shadow-[0_12px_24px_-16px_rgba(15,23,42,0.7)]">
+                <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+                <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">{initials}</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-sm font-semibold text-white">{user?.name || 'Admin'}</div>
+                <div className="text-xs text-white/70">{company?.name || companyId}</div>
+              </div>
             </div>
-            <div className="text-xs text-slate-500">{company?.name || 'Select a company'}</div>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-white/50">{roleLabel}</div>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
@@ -666,21 +671,21 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </SidebarGroup>
             <SidebarSeparator />
           </SidebarContent>
-          <SidebarFooter className="border-t border-sidebar-border px-4 py-4 text-xs text-slate-500">
+          <SidebarFooter className="border-t border-sidebar-border px-6 py-4 text-xs text-white/60">
             {roleLabel} access
           </SidebarFooter>
         </Sidebar>
 
         <SidebarInset className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-6 py-4 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <SidebarTrigger className="md:hidden" />
+            <SidebarTrigger className="hidden md:inline-flex" />
             <Dialog>
               <DialogTrigger asChild>
                 <button type="button" className="group">
-                  <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-emerald-200">
+                  <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-primary/20">
                     <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
                     <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
                   </Avatar>
@@ -701,7 +706,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </Dialog>
             <div>
               <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
-              <p className="text-xs italic text-emerald-600">{company?.name || 'Loading...'} - {roleLabel}</p>
+              <p className="text-xs text-slate-500">{company?.name || 'Loading...'} - {roleLabel}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -725,7 +730,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                 <Button variant="outline" size="icon" className="relative" aria-label="Notifications">
                   <Bell className="h-4 w-4" />
                   {unreadNotifications > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white">
                       {unreadNotifications > 9 ? '9+' : unreadNotifications}
                     </span>
                   )}
@@ -752,13 +757,13 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
-        <div className="px-6 py-6 space-y-6">
+        <div className="px-6 py-6 pb-24 space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Facilities</CardTitle>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Building2 className="h-4 w-4" />
               </span>
             </CardHeader>
@@ -823,7 +828,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
               <Card>
                 <CardHeader>
                   <CardTitle>Recent Issues</CardTitle>
-                  <CardDescription className="text-xs italic text-emerald-600">Latest reported issues</CardDescription>
+                  <CardDescription className="text-xs text-slate-500">Latest reported issues</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -874,7 +879,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
               <Card>
                 <CardHeader>
                   <CardTitle>Equipment Health</CardTitle>
-                  <CardDescription className="text-xs italic text-emerald-600">Equipment requiring attention</CardDescription>
+                  <CardDescription className="text-xs text-slate-500">Equipment requiring attention</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -909,7 +914,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                               <span className="inline-flex items-center gap-2 text-xs text-slate-600">
                                 <span className={`h-2.5 w-2.5 rounded-full ${
                                   eq.healthStatus === 'red' ? 'bg-red-500' :
-                                  eq.healthStatus === 'yellow' ? 'bg-yellow-400' : 'bg-emerald-500'
+                                  eq.healthStatus === 'yellow' ? 'bg-yellow-400' : 'bg-primary'
                                 }`} />
                                 {eq.healthStatus === 'red' ? 'Critical' : eq.healthStatus === 'yellow' ? 'Concerning' : 'Good'}
                               </span>
@@ -933,7 +938,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Facilities</CardTitle>
-                    <CardDescription className="text-xs italic text-emerald-600">Manage company branches</CardDescription>
+                    <CardDescription className="text-xs text-slate-500">Manage company branches</CardDescription>
                   </div>
                   {!isReadOnly && (
                   <Dialog open={isCreateFacilityOpen} onOpenChange={setIsCreateFacilityOpen}>
@@ -1103,7 +1108,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             <Card>
               <CardHeader>
                 <CardTitle>Equipment Registry</CardTitle>
-                <CardDescription className="text-xs italic text-emerald-600">All equipment across facilities</CardDescription>
+                <CardDescription className="text-xs text-slate-500">All equipment across facilities</CardDescription>
                 <div className="mt-4 flex flex-wrap items-end gap-3">
                   <div className="flex-1 min-w-[200px]">
                     <Label className="text-xs text-slate-500">Search</Label>
@@ -1226,7 +1231,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                             <span className="inline-flex items-center gap-2 text-xs text-slate-600">
                               <span className={`h-2.5 w-2.5 rounded-full ${
                                 eq.healthStatus === 'red' ? 'bg-red-500' :
-                                eq.healthStatus === 'yellow' ? 'bg-yellow-400' : 'bg-emerald-500'
+                                eq.healthStatus === 'yellow' ? 'bg-yellow-400' : 'bg-primary'
                               }`} />
                               {eq.healthStatus === 'red' ? 'Critical' : eq.healthStatus === 'yellow' ? 'Concerning' : 'Good'}
                             </span>
@@ -1246,7 +1251,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             <Card>
               <CardHeader>
                 <CardTitle>All Issues</CardTitle>
-                <CardDescription className="text-xs italic text-emerald-600">Complete issue tracking</CardDescription>
+                <CardDescription className="text-xs text-slate-500">Complete issue tracking</CardDescription>
                 <div className="mt-4 flex flex-wrap items-end gap-3">
                   <div className="flex-1 min-w-[220px]">
                     <Label className="text-xs text-slate-500">Search</Label>
@@ -1427,7 +1432,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle>Facility Managers</CardTitle>
-                      <CardDescription className="text-xs italic text-emerald-600">Manage facility staff</CardDescription>
+                      <CardDescription className="text-xs text-slate-500">Manage facility staff</CardDescription>
                     </div>
                     {!isReadOnly && (
                     <Dialog open={isCreateFMOpen} onOpenChange={setIsCreateFMOpen}>
@@ -1474,7 +1479,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                           <div className="space-y-2">
                             <Label>Assigned Facilities</Label>
                             {facilities.length === 0 ? (
-                              <p className="text-xs text-gray-500">Create a facility before assigning a manager.</p>
+                              <p className="text-xs text-slate-500">Create a facility before assigning a manager.</p>
                             ) : (
                               <div className="space-y-2">
                                 {facilities.map((facility) => (
@@ -1602,7 +1607,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle>Facility Supervisors</CardTitle>
-                      <CardDescription className="text-xs italic text-emerald-600">Read-only oversight</CardDescription>
+                      <CardDescription className="text-xs text-slate-500">Read-only oversight</CardDescription>
                     </div>
                     {!isReadOnly && (
                       <Dialog open={isCreateFSOpen} onOpenChange={setIsCreateFSOpen}>
@@ -1710,7 +1715,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle>Contractors</CardTitle>
-                      <CardDescription className="text-xs italic text-emerald-600">Assigned contractors</CardDescription>
+                      <CardDescription className="text-xs text-slate-500">Assigned contractors</CardDescription>
                     </div>
                     {!isReadOnly && (
                     <Dialog open={isAssignContractorOpen} onOpenChange={setIsAssignContractorOpen}>
@@ -1735,7 +1740,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                               placeholder="User ID of contractor"
                               required
                             />
-                            <p className="text-xs text-gray-500">Note: Contractor must have an existing account</p>
+                            <p className="text-xs text-slate-500">Note: Contractor must have an existing account</p>
                           </div>
                           <Button type="submit" className="w-full">Assign Contractor</Button>
                         </form>
@@ -1909,7 +1914,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
               <div className="space-y-2">
                 <Label>Assigned Facilities</Label>
                 {facilities.length === 0 ? (
-                  <p className="text-xs text-gray-500">Create a facility before assigning a manager.</p>
+                  <p className="text-xs text-slate-500">Create a facility before assigning a manager.</p>
                 ) : (
                   <div className="space-y-2">
                     {facilities.map((facility) => (
@@ -1955,7 +1960,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                   {getPriorityBadge(selectedIssue.priority)}
                   {getStatusBadge(selectedIssue.status)}
                 </div>
-                <p className="text-sm text-gray-600">{selectedIssue.description}</p>
+                <p className="text-sm text-slate-600">{selectedIssue.description}</p>
               </div>
 
               {selectedIssue.reportedBy && (
@@ -1991,7 +1996,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             <div className="space-y-4">
               <div>
                 <h3 className="font-semibold mb-2">{selectedEquipment.name}</h3>
-                <div className="text-sm text-gray-600 space-y-1">
+                <div className="text-sm text-slate-600 space-y-1">
                   <p><span className="font-medium">Category:</span> {selectedEquipment.category}</p>
                   <p><span className="font-medium">Brand:</span> {selectedEquipment.brand} {selectedEquipment.model}</p>
                   {selectedEquipment.serialNumber && <p><span className="font-medium">Serial:</span> {selectedEquipment.serialNumber}</p>}
@@ -2039,6 +2044,16 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
           </DialogContent>
         </Dialog>
       )}
+      <MobileBottomNav
+        activeId={activeTab}
+        items={[
+          { id: 'overview', label: 'Home', icon: <LayoutGrid className="h-4 w-4" />, onClick: () => setActiveTab('overview') },
+          { id: 'facilities', label: 'Sites', icon: <Building2 className="h-4 w-4" />, onClick: () => setActiveTab('facilities') },
+          { id: 'equipment', label: 'Assets', icon: <Package className="h-4 w-4" />, onClick: () => setActiveTab('equipment') },
+          { id: 'issues', label: 'Issues', icon: <AlertCircle className="h-4 w-4" />, onClick: () => setActiveTab('issues') },
+          { id: 'reports', label: 'Reports', icon: <LineChart className="h-4 w-4" />, onClick: () => setActiveTab('reports') },
+        ]}
+      />
         </SidebarInset>
       </Tabs>
     </SidebarProvider>

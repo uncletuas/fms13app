@@ -235,7 +235,7 @@ export function ProceduresPanel({ companyId, accessToken, canEdit }: ProceduresP
                   </TableCell>
                   <TableCell className="text-sm text-slate-600">
                     {procedure.latestVersion?.document_url ? (
-                      <a href={procedure.latestVersion.document_url} className="text-emerald-700" target="_blank" rel="noreferrer">
+                      <a href={procedure.latestVersion.document_url} className="text-primary" target="_blank" rel="noreferrer">
                         Download
                       </a>
                     ) : '-'}

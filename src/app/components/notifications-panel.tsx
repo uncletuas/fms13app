@@ -128,20 +128,20 @@ export function NotificationsPanel({ accessToken, onInvitationHandled, onUnreadC
   const getTone = (notification: any, isInvitation: boolean) => {
     if (isInvitation) {
       return {
-        border: 'border-emerald-200',
-        bg: 'bg-emerald-50/60',
-        accent: 'bg-emerald-500',
-        iconBg: 'bg-emerald-100 text-emerald-700',
-        chip: notification.read ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-200 text-emerald-800'
+        border: 'border-amber-200',
+        bg: 'bg-amber-50/70',
+        accent: 'bg-amber-400',
+        iconBg: 'bg-amber-100 text-amber-700',
+        chip: notification.read ? 'bg-amber-100 text-amber-700' : 'bg-amber-200 text-amber-800'
       };
     }
     if (notification.type?.includes('completed')) {
       return {
-        border: 'border-sky-200',
-        bg: 'bg-sky-50/70',
-        accent: 'bg-sky-500',
-        iconBg: 'bg-sky-100 text-sky-700',
-        chip: notification.read ? 'bg-sky-100 text-sky-700' : 'bg-sky-200 text-sky-800'
+        border: 'border-blue-200',
+        bg: 'bg-blue-50/70',
+        accent: 'bg-primary',
+        iconBg: 'bg-blue-100 text-blue-700',
+        chip: notification.read ? 'bg-blue-100 text-blue-700' : 'bg-blue-200 text-blue-800'
       };
     }
     if (notification.type?.includes('rejected')) {
@@ -163,10 +163,10 @@ export function NotificationsPanel({ accessToken, onInvitationHandled, onUnreadC
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
+    <div className="overflow-hidden rounded-2xl border border-white/70 bg-white shadow-[0_18px_45px_-30px_rgba(15,23,42,0.6)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 bg-slate-50/70 px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Bell className="h-5 w-5" />
           </div>
           <div>
@@ -175,7 +175,7 @@ export function NotificationsPanel({ accessToken, onInvitationHandled, onUnreadC
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className="bg-emerald-100 text-emerald-700">{unreadCount} new</Badge>
+          <Badge className="bg-primary/10 text-primary">{unreadCount} new</Badge>
           <Button variant="outline" size="sm" onClick={loadNotifications} disabled={isRefreshing}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh

@@ -256,7 +256,7 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, canManage, e
       <div className="rounded-md border border-border bg-white">
         <div className="border-b border-border px-4 py-3">
           <div className="text-sm font-semibold text-slate-900">Consumables list</div>
-          <div className="text-xs italic text-emerald-600">Active service items</div>
+          <div className="text-xs text-slate-500">Active service items</div>
         </div>
         <Table>
           <TableHeader>
@@ -335,7 +335,7 @@ export function ConsumablesPanel({ companyId, accessToken, canEdit, canManage, e
         <div className="flex flex-wrap items-end gap-3 border-b border-border px-4 py-3">
           <div>
             <div className="text-sm font-semibold text-slate-900">Usage log</div>
-            <div className="text-xs italic text-emerald-600">Consumable history</div>
+            <div className="text-xs text-slate-500">Consumable history</div>
           </div>
           <div className="ml-auto flex items-end gap-2">
             <div>

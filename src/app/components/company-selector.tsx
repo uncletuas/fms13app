@@ -66,8 +66,8 @@ export function CompanySelector({ companyBindings, accessToken, onSelectCompany,
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading companies...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-lg text-slate-600">Loading companies...</div>
       </div>
     );
   }
@@ -93,13 +93,13 @@ export function CompanySelector({ companyBindings, accessToken, onSelectCompany,
             return (
               <Card 
                 key={binding.companyId}
-                className="cursor-pointer transition-colors hover:bg-accent/40"
+                className="cursor-pointer transition-colors hover:bg-white/70"
                 onClick={() => onSelectCompany(binding.companyId)}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                         <Building2 className="w-6 h-6 text-primary" />
                       </div>
                       <div>
@@ -114,10 +114,10 @@ export function CompanySelector({ companyBindings, accessToken, onSelectCompany,
                 </CardHeader>
                 <CardContent>
                   {company?.address && (
-                    <p className="text-sm text-gray-600">{company.address}</p>
+                    <p className="text-sm text-slate-600">{company.address}</p>
                   )}
                   {binding.facilityIds && binding.facilityIds.length > 0 && (
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="text-sm text-slate-500 mt-2">
                       Assigned to {binding.facilityIds.length} {binding.facilityIds.length === 1 ? 'facility' : 'facilities'}
                     </p>
                   )}

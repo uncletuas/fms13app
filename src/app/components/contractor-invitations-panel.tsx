@@ -73,7 +73,7 @@ export function ContractorInvitationsPanel({ accessToken, onInvitationHandled }:
   };
 
   return (
-    <Card className="border-slate-200 bg-white">
+    <Card className="bg-white/90">
       <CardHeader>
         <CardTitle>Invitations</CardTitle>
         <CardDescription>Companies waiting for your response.</CardDescription>
@@ -87,7 +87,7 @@ export function ContractorInvitationsPanel({ accessToken, onInvitationHandled }:
           </div>
         ) : (
           invitations.map((invitation) => (
-            <div key={invitation.id} className="rounded-lg border border-slate-200 p-3">
+            <div key={invitation.id} className="rounded-2xl border border-slate-200/70 bg-white/80 p-4 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.5)]">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold">{invitation.companyName}</p>

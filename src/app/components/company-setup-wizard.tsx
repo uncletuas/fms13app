@@ -180,8 +180,8 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-              <Building2 className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center shadow-[0_12px_24px_-16px_rgba(15,23,42,0.6)]">
+              <Building2 className="w-7 h-7 text-primary" />
             </div>
             <div>
               <CardTitle className="text-2xl font-semibold">Welcome to FMS.13</CardTitle>
@@ -192,14 +192,14 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
           {/* Progress Steps */}
           <div className="flex items-center gap-2 mt-6">
             <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary' : 'text-slate-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-primary text-white' : 'bg-slate-200'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-primary text-white' : 'bg-white/80 border border-slate-200/70'}`}>
                 {step > 1 ? <Check className="w-5 h-5" /> : '1'}
               </div>
               <span className="text-sm font-medium">Company Details</span>
             </div>
             <ArrowRight className="w-4 h-4 text-slate-400" />
             <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary' : 'text-slate-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-primary text-white' : 'bg-slate-200'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-primary text-white' : 'bg-white/80 border border-slate-200/70'}`}>
                 2
               </div>
               <span className="text-sm font-medium">Complete Setup</span>
@@ -276,7 +276,7 @@ export function CompanySetupWizard({ user, accessToken, onSetupComplete, onLogou
                   <Check className="w-8 h-8 text-green-600" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Company Created Successfully!</h3>
-                <p className="text-gray-600">
+                <p className="text-slate-600">
                   {isCompleting ? 'Opening your dashboard...' : 'Preparing your dashboard...'}
                 </p>
               </div>

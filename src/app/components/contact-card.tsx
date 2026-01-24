@@ -31,15 +31,15 @@ export function ContactCard({ title, name, role, branch, contact, compact }: Con
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'company_admin':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-primary/10 text-primary border border-primary/20';
       case 'facility_manager':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-amber-100 text-amber-800';
       case 'facility_supervisor':
         return 'bg-slate-100 text-slate-700';
       case 'contractor':
         return 'bg-green-100 text-green-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-100 text-slate-700';
     }
   };
 
@@ -51,16 +51,16 @@ export function ContactCard({ title, name, role, branch, contact, compact }: Con
 
   if (compact) {
     return (
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      <div className="flex items-center justify-between p-4 bg-white/80 rounded-2xl border border-slate-200/70 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.5)]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-            <User className="w-5 h-5 text-blue-600" />
+          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shadow-[0_8px_16px_-12px_rgba(15,23,42,0.5)]">
+            <User className="w-5 h-5 text-primary" />
           </div>
           <div>
             <p className="font-medium">{name}</p>
             <div className="flex items-center gap-2 mt-1">
               <Badge className={getRoleBadgeColor(role)}>{getRoleLabel(role)}</Badge>
-              {branch && <span className="text-xs text-gray-500">{branch}</span>}
+              {branch && <span className="text-xs text-slate-500">{branch}</span>}
             </div>
           </div>
         </div>
@@ -89,8 +89,8 @@ export function ContactCard({ title, name, role, branch, contact, compact }: Con
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-            <User className="w-6 h-6 text-blue-600" />
+          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center shadow-[0_12px_24px_-16px_rgba(15,23,42,0.6)]">
+            <User className="w-6 h-6 text-primary" />
           </div>
           <div>
             <p className="font-semibold text-lg">{name}</p>
@@ -99,16 +99,16 @@ export function ContactCard({ title, name, role, branch, contact, compact }: Con
         </div>
 
         {branch && (
-          <div className="flex items-center gap-2 text-gray-600">
+          <div className="flex items-center gap-2 text-slate-600">
             <MapPin className="w-4 h-4" />
             <span>{branch}</span>
           </div>
         )}
 
-        <div className="space-y-2 pt-2 border-t">
+        <div className="space-y-2 pt-2 border-t border-slate-200/70">
           {contact.phone && (
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-gray-600">
+              <div className="flex items-center gap-2 text-slate-600">
                 <Phone className="w-4 h-4" />
                 <span className="text-sm">{contact.phone}</span>
               </div>
@@ -120,7 +120,7 @@ export function ContactCard({ title, name, role, branch, contact, compact }: Con
           
           {contact.email && (
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-gray-600">
+              <div className="flex items-center gap-2 text-slate-600">
                 <Mail className="w-4 h-4" />
                 <span className="text-sm">{contact.email}</span>
               </div>

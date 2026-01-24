@@ -158,7 +158,7 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-100">
+            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white/80 shadow-[0_12px_24px_-16px_rgba(15,23,42,0.6)]">
               {profile?.avatarUrl ? (
                 <img src={profile.avatarUrl} alt="Profile" className="h-full w-full object-cover" />
               ) : (
@@ -250,7 +250,7 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
               <CardDescription>Share this ID with companies to get invited.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2 text-sm shadow-[0_10px_24px_-18px_rgba(15,23,42,0.5)]">
                 <span className="font-mono text-slate-700">{profile?.id}</span>
                 <Button size="sm" variant="outline" onClick={handleCopyId}>
                   <Copy className="mr-2 h-4 w-4" />

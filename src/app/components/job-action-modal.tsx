@@ -160,7 +160,7 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+            <div className="bg-white/80 border border-slate-200/70 p-4 rounded-2xl space-y-2 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.5)]">
               <p className="text-sm"><strong>{jobLabel}:</strong> {job.equipmentName}</p>
               <p className="text-sm"><strong>Description:</strong> {job.description}</p>
               <p className="text-sm"><strong>Priority:</strong> <span className={`font-semibold ${job.priority === 'high' ? 'text-red-600' : job.priority === 'medium' ? 'text-yellow-600' : 'text-green-600'}`}>{job.priority}</span></p>
@@ -234,7 +234,7 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
                     multiple
                     onChange={(e) => setProposalFiles(Array.from(e.target.files || []))}
                   />
-                  <p className="text-xs text-gray-500">Attach quotes, diagrams, or supporting files.</p>
+                  <p className="text-xs text-slate-500">Attach quotes, diagrams, or supporting files.</p>
                 </div>
               </>
             )}
@@ -276,7 +276,7 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+          <div className="bg-white/80 border border-slate-200/70 p-4 rounded-2xl space-y-2 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.5)]">
             <p className="text-sm"><strong>{jobLabel}:</strong> {job.equipmentName}</p>
             <p className="text-sm"><strong>Description:</strong> {job.description}</p>
           </div>
@@ -336,7 +336,7 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
               value={proofDocuments}
               onChange={(e) => setProofDocuments(e.target.value)}
             />
-            <p className="text-xs text-gray-500">Enter URLs to photos or documents as proof of completion</p>
+            <p className="text-xs text-slate-500">Enter URLs to photos or documents as proof of completion</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="report-files">Report Attachments</Label>
@@ -346,7 +346,7 @@ export function JobActionModal({ isOpen, onClose, job, action, accessToken, onSu
               multiple
               onChange={(e) => setReportFiles(Array.from(e.target.files || []))}
             />
-            <p className="text-xs text-gray-500">Attach completion photos, invoices, or documents.</p>
+            <p className="text-xs text-slate-500">Attach completion photos, invoices, or documents.</p>
           </div>
 
           <div className="flex gap-3 pt-4">

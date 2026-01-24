@@ -13,6 +13,7 @@ import { ActivityLog } from '@/app/components/activity-log';
 import { JobActionModal } from '@/app/components/job-action-modal';
 import { ProfileSettings } from '@/app/components/profile-settings';
 import { NotificationsPanel } from '@/app/components/notifications-panel';
+import { MobileBottomNav } from '@/app/components/mobile-bottom-nav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
 import { IssueTimeline } from '@/app/components/issue-timeline';
 import { downloadCsv, inDateRange, printTable, ExportColumn } from '@/app/components/table-export';
@@ -218,9 +219,9 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
       escalated: { label: 'Escalated', className: 'bg-red-100 text-red-800' },
       completed: { label: 'Completed', className: 'bg-green-100 text-green-800' },
       approved: { label: 'Approved', className: 'bg-teal-100 text-teal-800' },
-      closed: { label: 'Closed', className: 'bg-gray-100 text-gray-800' },
+      closed: { label: 'Closed', className: 'bg-slate-100 text-slate-700 border border-slate-200/70' },
     };
-    const config = statusConfig[status] || { label: status, className: 'bg-gray-100 text-gray-800' };
+    const config = statusConfig[status] || { label: status, className: 'bg-slate-100 text-slate-700 border border-slate-200/70' };
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -330,10 +331,19 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   return (
     <SidebarProvider defaultOpen>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex-row gap-0">
-        <Sidebar collapsible="icon" className="border-r border-border bg-sidebar">
-          <SidebarHeader className="gap-3 border-b border-sidebar-border px-4 py-4">
-            <div className="text-sm font-semibold text-slate-900">Contractor Workspace</div>
-            <div className="text-xs text-slate-500">{user?.name}</div>
+        <Sidebar collapsible="icon" mobileHidden className="border-r border-sidebar-border bg-sidebar">
+          <SidebarHeader className="gap-4 border-b border-sidebar-border px-6 py-6">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12 border border-white/20 bg-white/10 shadow-[0_12px_24px_-16px_rgba(15,23,42,0.7)]">
+                <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+                <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">{initials}</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-sm font-semibold text-white">{user?.name || 'Contractor'}</div>
+                <div className="text-xs text-white/70">{subtitle}</div>
+              </div>
+            </div>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-white/50">Contractor</div>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
@@ -371,20 +381,20 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             </SidebarGroup>
             <SidebarSeparator />
           </SidebarContent>
-          <SidebarFooter className="border-t border-sidebar-border px-4 py-4 text-xs text-slate-500">
+          <SidebarFooter className="border-t border-sidebar-border px-6 py-4 text-xs text-white/60">
             Contractor access
           </SidebarFooter>
         </Sidebar>
 
         <SidebarInset className="min-h-screen bg-background flex flex-col">
-          <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
+          <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-6 py-4 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <SidebarTrigger className="md:hidden" />
+                <SidebarTrigger className="hidden md:inline-flex" />
                 <Dialog>
                   <DialogTrigger asChild>
                     <button type="button" className="group">
-                      <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-emerald-200">
+                      <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-primary/20">
                         <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
                         <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
                       </Avatar>
@@ -405,7 +415,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                 </Dialog>
                 <div>
                   <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
-                  <p className="text-xs italic text-emerald-600">{subtitle} - {user.name}</p>
+                  <p className="text-xs text-slate-500">{subtitle} - {user.name}</p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -429,7 +439,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                     <Button variant="outline" size="icon" aria-label="Notifications" className="relative">
                       <Bell className="h-4 w-4" />
                       {unreadNotifications > 0 && (
-                        <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
+                        <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white">
                           {unreadNotifications > 9 ? '9+' : unreadNotifications}
                         </span>
                       )}
@@ -456,13 +466,13 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
           </header>
 
           <main className="flex-1 overflow-y-auto">
-            <div className="px-6 py-6 space-y-6">
+            <div className="px-6 py-6 pb-24 space-y-6">
         {/* Stats Grid */}
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 ${companyId ? 'mb-6' : ''}`}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Assigned</CardTitle>
-              <Wrench className="w-4 h-4 text-gray-500" />
+              <Wrench className="w-4 h-4 text-slate-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalAssigned || 0}</div>
@@ -500,15 +510,15 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Rating</CardTitle>
-              <AlertCircle className="w-4 h-4 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
-                {stats?.avgRating ? stats.avgRating.toFixed(1) : '-'}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Out of 5.0</p>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg Rating</CardTitle>
+                <AlertCircle className="w-4 h-4 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">
+                  {stats?.avgRating ? stats.avgRating.toFixed(1) : '-'}
+                </div>
+              <p className="text-xs text-slate-500 mt-1">Out of 5.0</p>
             </CardContent>
           </Card>
         </div>
@@ -541,7 +551,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <CardTitle>Pending Issues</CardTitle>
-                    <CardDescription className="text-xs italic text-emerald-600">New assignments awaiting your response.</CardDescription>
+                    <CardDescription className="text-xs text-slate-500">New assignments awaiting your response.</CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -640,7 +650,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <CardTitle>Active Work</CardTitle>
-                    <CardDescription className="text-xs italic text-emerald-600">Issues currently in progress.</CardDescription>
+                    <CardDescription className="text-xs text-slate-500">Issues currently in progress.</CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -750,7 +760,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <CardTitle>Completed Issues</CardTitle>
-                    <CardDescription className="text-xs italic text-emerald-600">Closed work with feedback.</CardDescription>
+                    <CardDescription className="text-xs text-slate-500">Closed work with feedback.</CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -836,7 +846,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <CardTitle>Escalated Issues</CardTitle>
-                      <CardDescription className="text-xs italic text-emerald-600">Immediate attention required.</CardDescription>
+                      <CardDescription className="text-xs text-slate-500">Immediate attention required.</CardDescription>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -937,7 +947,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
                   {getPriorityBadge(selectedIssue.priority)}
                   {getStatusBadge(selectedIssue.status)}
                 </div>
-                <p className="text-sm text-gray-600">{selectedIssue.description}</p>
+                <p className="text-sm text-slate-600">{selectedIssue.description}</p>
               </div>
 
               {selectedIssue.reportedBy && (
@@ -953,7 +963,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
               <IssueTimeline issue={selectedIssue} />
 
               {selectedIssue.slaDeadline && (
-                <div className="p-3 bg-gray-50 rounded">
+                <div className="rounded-lg border border-slate-200/70 bg-white/80 p-3 shadow-sm">
                   <p className="text-sm">
                     <span className="font-medium">SLA Deadline:</span>{' '}
                     {new Date(selectedIssue.slaDeadline).toLocaleString()}
@@ -1028,6 +1038,15 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
           }}
         />
       )}
+      <MobileBottomNav
+        activeId={activeTab}
+        items={[
+          { id: 'pending', label: 'Pending', icon: <Clock className="h-4 w-4" />, onClick: () => setActiveTab('pending') },
+          { id: 'inprogress', label: 'Active', icon: <Wrench className="h-4 w-4" />, onClick: () => setActiveTab('inprogress') },
+          { id: 'completed', label: 'Done', icon: <CheckCircle className="h-4 w-4" />, onClick: () => setActiveTab('completed') },
+          { id: 'escalated', label: 'Escalated', icon: <AlertCircle className="h-4 w-4" />, onClick: () => setActiveTab('escalated') },
+        ]}
+      />
         </SidebarInset>
       </Tabs>
     </SidebarProvider>

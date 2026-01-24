@@ -2,43 +2,43 @@
 
 :root {
   --font-size: 16px;
-  --background: #f7f8fa;
-  --foreground: #2f3338;
+  --background: #d8dee6;
+  --foreground: #1f2a33;
   --card: #ffffff;
-  --card-foreground: #2f3338;
+  --card-foreground: #1f2a33;
   --popover: oklch(1 0 0);
-  --popover-foreground: #2f3338;
-  --primary: #2f6f6d;
+  --popover-foreground: #1f2a33;
+  --primary: #163a5b;
   --primary-foreground: oklch(1 0 0);
-  --secondary: #eef1f4;
-  --secondary-foreground: #2f3338;
-  --muted: #f0f2f5;
-  --muted-foreground: #6b7280;
-  --accent: #f4f6f8;
-  --accent-foreground: #2f3338;
-  --destructive: #d14b4b;
+  --secondary: #edf1f6;
+  --secondary-foreground: #1f2a33;
+  --muted: #e9eef4;
+  --muted-foreground: #5d6b78;
+  --accent: #f3f6fa;
+  --accent-foreground: #1f2a33;
+  --destructive: #d05858;
   --destructive-foreground: #ffffff;
-  --border: #e2e6eb;
+  --border: #cfd7e2;
   --input: transparent;
-  --input-background: #ffffff;
-  --switch-background: #d1d5db;
+  --input-background: #fdfdfd;
+  --switch-background: #c4ceda;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #b9c3cf;
-  --chart-1: #2f6f6d;
-  --chart-2: #4f8f8d;
-  --chart-3: #7aa3a2;
-  --chart-4: #a7c1c0;
-  --chart-5: #d4dddd;
-  --radius: 0.5rem;
-  --sidebar: #f4f6f8;
-  --sidebar-foreground: #2f3338;
-  --sidebar-primary: #2f6f6d;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef1f4;
-  --sidebar-accent-foreground: #2f3338;
-  --sidebar-border: #e2e6eb;
-  --sidebar-ring: #b9c3cf;
+  --ring: #9bb0c2;
+  --chart-1: #163a5b;
+  --chart-2: #f1a423;
+  --chart-3: #7fa4bf;
+  --chart-4: #aebfd1;
+  --chart-5: #dbe3ec;
+  --radius: 0.85rem;
+  --sidebar: #143652;
+  --sidebar-foreground: #e6eef6;
+  --sidebar-primary: #f1a423;
+  --sidebar-primary-foreground: #1f2a33;
+  --sidebar-accent: #1c4668;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #0f2b44;
+  --sidebar-ring: #6484a0;
 }
 
 .dark {
@@ -126,7 +126,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: "Poppins", "Segoe UI", system-ui, -apple-system, sans-serif;
     letter-spacing: 0.01em;
   }
 

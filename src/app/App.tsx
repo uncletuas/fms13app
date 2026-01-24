@@ -160,8 +160,8 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-lg text-slate-600">Loading...</div>
       </div>
     );
   }
@@ -212,8 +212,8 @@ export default function App() {
 
     return (
       <>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4">
-          <Card className="w-full max-w-lg border-white/10 bg-white/95 text-slate-900">
+        <div className="min-h-screen flex items-center justify-center bg-background p-6">
+          <Card className="w-full max-w-lg bg-white/90 text-slate-900">
             <CardHeader>
               <CardTitle>Company setup required</CardTitle>
               <CardDescription>

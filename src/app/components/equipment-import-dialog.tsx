@@ -226,7 +226,7 @@ export function EquipmentImportDialog({
           </div>
 
           {previewErrors.length > 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
               <div className="font-semibold">Preview warnings</div>
               <ul className="mt-2 space-y-1">
                 {previewErrors.slice(0, 5).map((error) => (
@@ -238,7 +238,7 @@ export function EquipmentImportDialog({
           )}
 
           {previewRows.length > 0 && (
-            <div className="rounded-md border border-border bg-white p-3 text-xs text-slate-600">
+            <div className="rounded-xl border border-slate-200/70 bg-white/90 p-3 text-xs text-slate-600 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.5)]">
               <div className="font-semibold text-slate-700">Preview (first {previewRows.length} of {previewCount})</div>
               <div className="mt-2 grid gap-1">
                 {previewRows.map((row, index) => (
@@ -255,7 +255,7 @@ export function EquipmentImportDialog({
           )}
 
           {importErrors.length > 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
               <div className="font-semibold">Skipped rows</div>
               <ul className="mt-2 space-y-1">
                 {importErrors.slice(0, 5).map((error) => (
@@ -266,7 +266,7 @@ export function EquipmentImportDialog({
             </div>
           )}
 
-          <div className="rounded-md border border-border bg-white p-3 text-xs text-slate-600">
+          <div className="rounded-xl border border-slate-200/70 bg-white/90 p-3 text-xs text-slate-600 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.5)]">
             <div>Imported: {importedCount ?? '-'}</div>
             <div>Errors: {importErrors.length}</div>
           </div>

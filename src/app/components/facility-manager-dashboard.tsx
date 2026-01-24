@@ -22,6 +22,7 @@ import { ProceduresPanel } from '@/app/components/procedures-panel';
 import { ConsumablesPanel } from '@/app/components/consumables-panel';
 import { ProcedureChecklistPanel } from '@/app/components/procedure-checklist-panel';
 import { NotificationsPanel } from '@/app/components/notifications-panel';
+import { MobileBottomNav } from '@/app/components/mobile-bottom-nav';
 import {
   Sidebar,
   SidebarContent,
@@ -350,10 +351,10 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
       escalated: { label: 'Escalated', className: 'bg-red-100 text-red-800' },
       completed: { label: 'Completed', className: 'bg-green-100 text-green-800' },
       approved: { label: 'Approved', className: 'bg-teal-100 text-teal-800' },
-      closed: { label: 'Closed', className: 'bg-gray-100 text-gray-800' },
+      closed: { label: 'Closed', className: 'bg-slate-100 text-slate-700 border border-slate-200/70' },
     };
 
-    const config = statusConfig[status] || { label: status, className: 'bg-gray-100 text-gray-800' };
+    const config = statusConfig[status] || { label: status, className: 'bg-slate-100 text-slate-700 border border-slate-200/70' };
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -445,10 +446,19 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   return (
     <SidebarProvider defaultOpen>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex-row gap-0">
-        <Sidebar collapsible="icon" className="border-r border-border bg-sidebar">
-          <SidebarHeader className="gap-3 border-b border-sidebar-border px-4 py-4">
-            <div className="text-sm font-semibold text-slate-900">Facility Operations</div>
-            <div className="text-xs text-slate-500">{companyId}</div>
+        <Sidebar collapsible="icon" mobileHidden className="border-r border-sidebar-border bg-sidebar">
+          <SidebarHeader className="gap-4 border-b border-sidebar-border px-6 py-6">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12 border border-white/20 bg-white/10 shadow-[0_12px_24px_-16px_rgba(15,23,42,0.7)]">
+                <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
+                <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">{initials}</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-sm font-semibold text-white">{user?.name || 'Facility Manager'}</div>
+                <div className="text-xs text-white/70">{companyId}</div>
+              </div>
+            </div>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-white/50">Facility Manager</div>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
@@ -488,20 +498,20 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             </SidebarGroup>
             <SidebarSeparator />
           </SidebarContent>
-          <SidebarFooter className="border-t border-sidebar-border px-4 py-4 text-xs text-slate-500">
+          <SidebarFooter className="border-t border-sidebar-border px-6 py-4 text-xs text-white/60">
             Facility Manager
           </SidebarFooter>
         </Sidebar>
 
         <SidebarInset className="min-h-screen bg-background flex flex-col">
-          <header className="sticky top-0 z-30 border-b border-border bg-white/90 px-6 py-4 backdrop-blur">
+          <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-6 py-4 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <SidebarTrigger className="md:hidden" />
+                <SidebarTrigger className="hidden md:inline-flex" />
                 <Dialog>
                   <DialogTrigger asChild>
                     <button type="button" className="group">
-                      <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-emerald-200">
+                      <Avatar className="h-10 w-10 transition group-hover:ring-2 group-hover:ring-primary/20">
                         <AvatarImage src={avatarUrl} alt={user?.name || 'Profile'} />
                         <AvatarFallback className="text-xs font-medium text-slate-500">{initials}</AvatarFallback>
                       </Avatar>
@@ -522,7 +532,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 </Dialog>
                 <div>
                   <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
-                  <p className="text-xs italic text-emerald-600">{companyId} - Facility Manager</p>
+                  <p className="text-xs text-slate-500">{companyId} - Facility Manager</p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -546,7 +556,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                     <Button variant="outline" size="icon" className="relative" aria-label="Notifications">
                       <Bell className="h-4 w-4" />
                       {unreadNotifications > 0 && (
-                        <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
+                        <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white">
                           {unreadNotifications > 9 ? '9+' : unreadNotifications}
                         </span>
                       )}
@@ -572,17 +582,17 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
           </header>
 
           <main className="flex-1 overflow-y-auto">
-            <div className="px-6 py-6 space-y-6">
+            <div className="px-6 py-6 pb-24 space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Equipment</CardTitle>
-              <Package className="w-4 h-4 text-gray-500" />
+              <Package className="w-4 h-4 text-slate-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalEquipmentCount}</div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-slate-500 mt-1">
                 <span className="text-green-600">o</span> {stats?.healthyEquipment || 0} Healthy
                 <span className="text-yellow-600 ml-2">o</span> {stats?.concerningEquipment || 0} Warning
                 <span className="text-red-600 ml-2">o</span> {stats?.criticalEquipment || 0} Critical
@@ -593,7 +603,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Open Issues</CardTitle>
-              <AlertCircle className="w-4 h-4 text-gray-500" />
+              <AlertCircle className="w-4 h-4 text-slate-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.openIssues || 0}</div>
@@ -604,20 +614,20 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
-              <CheckCircle className="w-4 h-4 text-gray-500" />
+              <CheckCircle className="w-4 h-4 text-slate-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {issues.filter(i => i.status === 'completed').length}
               </div>
-              <p className="text-xs text-gray-500 mt-1">Awaiting your review</p>
+              <p className="text-xs text-slate-500 mt-1">Awaiting your review</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Assigned Contractors</CardTitle>
-              <Package className="w-4 h-4 text-gray-500" />
+              <Package className="w-4 h-4 text-slate-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{contractors.length}</div>
@@ -631,7 +641,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Issues</CardTitle>
-                    <CardDescription className="text-xs italic text-emerald-600">Track and manage facility issues</CardDescription>
+                    <CardDescription className="text-xs text-slate-500">Track and manage facility issues</CardDescription>
                   </div>
                   <Dialog open={isCreateIssueOpen} onOpenChange={setIsCreateIssueOpen}>
                     <DialogTrigger asChild>
@@ -940,7 +950,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Equipment</CardTitle>
-                    <CardDescription className="text-xs italic text-emerald-600">Manage facility equipment</CardDescription>
+                    <CardDescription className="text-xs text-slate-500">Manage facility equipment</CardDescription>
                   </div>
                   <Dialog open={isCreateEquipmentOpen} onOpenChange={setIsCreateEquipmentOpen}>
                     <DialogTrigger asChild>
@@ -1180,7 +1190,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                             <span className="inline-flex items-center gap-2 text-xs text-slate-600">
                               <span className={`h-2.5 w-2.5 rounded-full ${
                                 eq.healthStatus === 'red' ? 'bg-red-500' :
-                                eq.healthStatus === 'yellow' ? 'bg-yellow-400' : 'bg-emerald-500'
+                                eq.healthStatus === 'yellow' ? 'bg-yellow-400' : 'bg-primary'
                               }`} />
                               {eq.healthStatus === 'red' ? 'Critical' : eq.healthStatus === 'yellow' ? 'Concerning' : 'Good'}
                             </span>
@@ -1218,7 +1228,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             <Card>
               <CardHeader>
                 <CardTitle>Assigned Contractors</CardTitle>
-                <CardDescription className="text-xs italic text-emerald-600">Contractors working on your facilities</CardDescription>
+                <CardDescription className="text-xs text-slate-500">Contractors working on your facilities</CardDescription>
                 <div className="mt-4 flex flex-wrap items-end gap-3">
                   <div className="flex-1 min-w-[200px]">
                     <Label className="text-xs text-slate-500">Search</Label>
@@ -1345,7 +1355,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                   {getPriorityBadge(selectedIssue.priority)}
                   {getStatusBadge(selectedIssue.status)}
                 </div>
-                <p className="text-sm text-gray-600">{selectedIssue.description}</p>
+                <p className="text-sm text-slate-600">{selectedIssue.description}</p>
               </div>
 
               {selectedIssue.reportedBy && (
@@ -1363,7 +1373,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
               {selectedIssue.contractorResponse && (
                 <div className="p-3 border rounded-lg">
                   <h4 className="font-semibold mb-2">Contractor Response</h4>
-                  <div className="text-sm text-gray-600 space-y-1">
+                  <div className="text-sm text-slate-600 space-y-1">
                     <p><span className="font-medium">Decision:</span> {selectedIssue.contractorResponse.decision}</p>
                     <p><span className="font-medium">Proposed cost:</span> {selectedIssue.contractorResponse.proposedCost || 0}</p>
                     {selectedIssue.contractorResponse.reason && (
@@ -1380,7 +1390,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
               {selectedIssue.completion && (
                 <div className="p-3 border rounded-lg">
                   <h4 className="font-semibold mb-2">Completion Report</h4>
-                  <div className="text-sm text-gray-600 space-y-1">
+                  <div className="text-sm text-slate-600 space-y-1">
                     <p><span className="font-medium">Final cost:</span> {selectedIssue.completion.finalCost || 0}</p>
                     <p><span className="font-medium">Execution report:</span> {selectedIssue.completion.executionReport}</p>
                     {selectedIssue.completion.workPerformed && (
@@ -1463,7 +1473,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             <div className="space-y-4">
               <div>
                 <h3 className="font-semibold mb-2">{selectedEquipment.name}</h3>
-                <div className="text-sm text-gray-600 space-y-1">
+                <div className="text-sm text-slate-600 space-y-1">
                   <p><span className="font-medium">Category:</span> {selectedEquipment.category}</p>
                   <p><span className="font-medium">Brand:</span> {selectedEquipment.brand} {selectedEquipment.model}</p>
                   {selectedEquipment.serialNumber && <p><span className="font-medium">Serial:</span> {selectedEquipment.serialNumber}</p>}
@@ -1512,6 +1522,16 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
           </DialogContent>
         </Dialog>
       )}
+      <MobileBottomNav
+        activeId={activeTab}
+        items={[
+          { id: 'issues', label: 'Issues', icon: <AlertCircle className="h-4 w-4" />, onClick: () => setActiveTab('issues') },
+          { id: 'equipment', label: 'Assets', icon: <Package className="h-4 w-4" />, onClick: () => setActiveTab('equipment') },
+          { id: 'procedures', label: 'Plans', icon: <ClipboardList className="h-4 w-4" />, onClick: () => setActiveTab('procedures') },
+          { id: 'consumables', label: 'Stock', icon: <FlaskConical className="h-4 w-4" />, onClick: () => setActiveTab('consumables') },
+          { id: 'contractors', label: 'Vendors', icon: <Users className="h-4 w-4" />, onClick: () => setActiveTab('contractors') },
+        ]}
+      />
         </SidebarInset>
       </Tabs>
     </SidebarProvider>

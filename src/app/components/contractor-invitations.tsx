@@ -95,8 +95,8 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
         <Card className="w-full max-w-md">
           <CardHeader>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-                <Building2 className="w-7 h-7 text-white" />
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shadow-[0_12px_24px_-16px_rgba(15,23,42,0.6)]">
+                <Building2 className="w-7 h-7 text-primary" />
               </div>
               <div>
                 <CardTitle>No Pending Invitations</CardTitle>
@@ -109,8 +109,8 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
               You are registered as a contractor but haven't been assigned to any companies yet. 
               Company administrators can invite you using your Contractor ID:
             </p>
-            <div className="bg-gray-100 p-4 rounded-lg mb-4">
-              <p className="text-sm text-gray-600 mb-1">Your Contractor ID</p>
+            <div className="bg-white/80 p-4 rounded-2xl mb-4 border border-slate-200/70 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.5)]">
+              <p className="text-sm text-slate-600 mb-1">Your Contractor ID</p>
               <p className="font-mono text-lg font-semibold">{user.id}</p>
             </div>
             <Button onClick={onLogout} variant="outline" className="w-full">
@@ -129,8 +129,8 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-                  <Building2 className="w-7 h-7 text-white" />
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shadow-[0_12px_24px_-16px_rgba(15,23,42,0.6)]">
+                  <Building2 className="w-7 h-7 text-primary" />
                 </div>
                 <div>
                   <CardTitle>Company Invitations</CardTitle>
@@ -165,7 +165,7 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
               <CardContent>
                 <div className="space-y-3 mb-4">
                   <div>
-                    <p className="text-sm text-gray-600">Invitation Details</p>
+                    <p className="text-sm text-slate-600">Invitation Details</p>
                     <p className="text-sm mt-1">
                       You have been invited to work as a contractor for <strong>{invitation.companyName}</strong>.
                     </p>
@@ -173,7 +173,7 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
                   
                   {invitation.categories && invitation.categories.length > 0 && (
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Assigned Categories</p>
+                      <p className="text-sm text-slate-600 mb-1">Assigned Categories</p>
                       <div className="flex flex-wrap gap-2">
                         {invitation.categories.map((cat: string, index: number) => (
                           <Badge key={index} variant="secondary">{cat}</Badge>
@@ -183,7 +183,7 @@ export function ContractorInvitations({ user, accessToken, onLogout, onInvitatio
                   )}
 
                   <div>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-500">
                       Invited on {new Date(invitation.createdAt).toLocaleDateString()}
                     </p>
                   </div>
