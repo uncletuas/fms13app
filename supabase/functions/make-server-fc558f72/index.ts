@@ -685,9 +685,22 @@ const sendEmail = async (params: { to: string | string[]; subject: string; html:
   }
 };
 
+const detectDelimiter = (line: string) => {
+  const counts = {
+    ',': (line.match(/,/g) || []).length,
+    ';': (line.match(/;/g) || []).length,
+    '\t': (line.match(/\t/g) || []).length,
+  };
+  const delimiter = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || ',';
+  return delimiter;
+};
+
 const parseCsv = (csvText: string) => {
   const rows: string[][] = [];
   const lines = csvText.split(/\r\n|\n|\r/).filter((line) => line.trim().length > 0);
+  if (lines.length === 0) return [];
+  const delimiter = detectDelimiter(lines[0]);
   for (const line of lines) {
     const values: string[] = [];
     let current = '';
@@ -703,7 +716,7 @@ const parseCsv = (csvText: string) => {
         }
         continue;
       }
-      if (char === ',' && !inQuotes) {
+      if (char === delimiter && !inQuotes) {
         values.push(current);
         current = '';
         continue;
@@ -713,7 +726,6 @@ const parseCsv = (csvText: string) => {
     values.push(current);
     rows.push(values);
   }
-  if (rows.length === 0) return [];
   const headers = rows[0].map((header, index) => {
     const cleaned = index === 0 ? header.replace(/^\ufeff/, '') : header;
     return cleaned.trim();
