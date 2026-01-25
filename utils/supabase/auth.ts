@@ -46,6 +46,7 @@ export const getAuthHeaders = async (fallbackToken?: string) => {
   const headers: Record<string, string> = { apikey: publicAnonKey };
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+    headers['x-access-token'] = token;
   }
   return { headers, token };
 };

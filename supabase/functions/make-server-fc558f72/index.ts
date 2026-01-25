@@ -41,7 +41,7 @@ app.use(
   "/*",
   cors({
     origin: "*",
-    allowHeaders: ["Content-Type", "Authorization", "apikey"],
+    allowHeaders: ["Content-Type", "Authorization", "apikey", "x-access-token"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
@@ -50,7 +50,13 @@ app.use(
 
 // Helper function to verify user
 const verifyUser = async (request: Request) => {
-  const accessToken = request.headers.get('Authorization')?.split(' ')[1];
+  const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
+  const tokenFromHeader = authHeader?.startsWith('Bearer ')
+    ? authHeader.split(' ')[1]
+    : authHeader;
+  const accessToken = tokenFromHeader
+    || request.headers.get('x-access-token')
+    || request.headers.get('X-Access-Token');
   if (!accessToken) {
     return { error: 'No token provided', user: null };
   }
@@ -4497,7 +4503,7 @@ app.get("/make-server-fc558f72/dashboard/stats", async (c) => {
 
     let stats: any = {};
 
-    if (binding.role === 'company_admin') {
+    if (binding.role === 'company_admin' || binding.role === 'facility_supervisor') {
       stats = {
         totalFacilities: companyFacilities.length,
         totalEquipment: companyEquipment.length,
