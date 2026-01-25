@@ -1696,7 +1696,11 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
     const now = new Date().toISOString();
     const created: any[] = [];
     const errors: any[] = [];
-    const normalizeKey = (value: string) => value.trim().toLowerCase().replace(/\s+/g, '_');
+    const normalizeKey = (value: string) => value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
     const mapHealthStatus = (value?: string) => {
       if (!value) return '';
       const normalized = value.toLowerCase();
@@ -1730,15 +1734,31 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
         const normalizedRow = Object.fromEntries(
           Object.entries(row).map(([key, value]) => [normalizeKey(key), value])
         );
-        const name = normalizedRow.name || normalizedRow.equipment || normalizedRow.equipment_name;
-      const category = normalizedRow.category || normalizedRow.equipment_category;
+        const name = normalizedRow.name
+          || normalizedRow.equipment
+          || normalizedRow.equipment_name
+          || normalizedRow.equipmentname;
+      const category = normalizedRow.category
+        || normalizedRow.equipment_category
+        || normalizedRow.equipmentcategory;
       const facilityValue =
-        normalizedRow.facility_id || normalizedRow.facility || normalizedRow.facility_name || normalizedRow.branch;
+        normalizedRow.facility_id
+        || normalizedRow.facility
+        || normalizedRow.facility_name
+        || normalizedRow.facility_branch
+        || normalizedRow.branch
+        || normalizedRow.branch_name
+        || normalizedRow.facility_location
+        || normalizedRow.location;
       const facilityIdValue = facilityValue ? String(facilityValue).trim() : '';
       const facility = facilityById.get(facilityIdValue) || facilityByName.get(facilityIdValue.toLowerCase());
 
         if (!name || !category || !facility) {
-          errors.push({ row: index + 2, error: 'name, category, and facility are required' });
+          if (name && category && facilityIdValue) {
+            errors.push({ row: index + 2, error: 'facility not found (use facility name or ID)' });
+          } else {
+            errors.push({ row: index + 2, error: 'name, category, and facility are required' });
+          }
           continue;
         }
 

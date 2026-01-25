@@ -62,7 +62,11 @@ const parseCsvText = (csvText: string) => {
   });
 };
 
-const normalizeKey = (value: string) => value.trim().toLowerCase().replace(/\s+/g, '_');
+const normalizeKey = (value: string) => value
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '_')
+  .replace(/^_+|_+$/g, '');
 
 interface EquipmentImportDialogProps {
   companyId: string;
@@ -121,11 +125,23 @@ export function EquipmentImportDialog({
         const normalized = Object.fromEntries(
           Object.entries(row).map(([key, value]) => [normalizeKey(key), value])
         );
-        const name = normalized.name || normalized.equipment || normalized.equipment_name;
-        const category = normalized.category || normalized.equipment_category;
-        const facility = normalized.facility_id || normalized.facility || normalized.facility_name || normalized.branch;
+        const name = normalized.name || normalized.equipment || normalized.equipment_name || normalized.equipmentname;
+        const category = normalized.category || normalized.equipment_category || normalized.equipmentcategory;
+        const facility =
+          normalized.facility_id
+          || normalized.facility
+          || normalized.facility_name
+          || normalized.facility_branch
+          || normalized.branch
+          || normalized.branch_name
+          || normalized.facility_location
+          || normalized.location;
         if (!name || !category || !facility) {
-          errors.push(`Row ${index + 2}: name, category, and facility are required`);
+          if (name && category && facility === undefined && normalized.location) {
+            errors.push(`Row ${index + 2}: facility not found (use facility name or ID)`);
+          } else {
+            errors.push(`Row ${index + 2}: name, category, and facility are required`);
+          }
         }
         const serialNumber = normalized.serialnumber || normalized.serial_number || '';
         if (serialNumber && facility) {
@@ -143,9 +159,18 @@ export function EquipmentImportDialog({
           Object.entries(row).map(([key, value]) => [normalizeKey(key), value])
         );
         return {
-          name: normalized.name || normalized.equipment || normalized.equipment_name || '',
-          category: normalized.category || normalized.equipment_category || '',
-          facility: normalized.facility_id || normalized.facility || normalized.facility_name || normalized.branch || '',
+          name: normalized.name || normalized.equipment || normalized.equipment_name || normalized.equipmentname || '',
+          category: normalized.category || normalized.equipment_category || normalized.equipmentcategory || '',
+          facility:
+            normalized.facility_id
+            || normalized.facility
+            || normalized.facility_name
+            || normalized.facility_branch
+            || normalized.branch
+            || normalized.branch_name
+            || normalized.facility_location
+            || normalized.location
+            || '',
           location: normalized.location || '',
           serialNumber: normalized.serialnumber || normalized.serial_number || ''
         };
