@@ -136,11 +136,14 @@ export function EquipmentImportDialog({
           || normalized.branch_name
           || normalized.facility_location
           || normalized.location;
-        if (!name || !category || !facility) {
-          if (name && category && facility === undefined && normalized.location) {
-            errors.push(`Row ${index + 2}: facility not found (use facility name or ID)`);
-          } else {
-            errors.push(`Row ${index + 2}: name, category, and facility are required`);
+        if (!facility) {
+          errors.push(`Row ${index + 2}: facility is required (use facility name or ID)`);
+        } else {
+          if (!name) {
+            errors.push(`Row ${index + 2}: missing name (will use default)`);
+          }
+          if (!category) {
+            errors.push(`Row ${index + 2}: missing category (will use default)`);
           }
         }
         const serialNumber = normalized.serialnumber || normalized.serial_number || '';

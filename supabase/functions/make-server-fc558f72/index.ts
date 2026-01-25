@@ -1711,9 +1711,10 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
     };
 
       const allFacilities = await kv.getByPrefix('facility:');
+      const companyFacilities = allFacilities.filter((facility: any) => facility.companyId === companyId);
       const facilityById = new Map<string, any>();
       const facilityByName = new Map<string, any>();
-      allFacilities
+      companyFacilities
         .filter((facility: any) => facility.companyId === companyId)
         .forEach((facility: any) => {
           facilityById.set(facility.id, facility);
@@ -1751,14 +1752,13 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
         || normalizedRow.facility_location
         || normalizedRow.location;
       const facilityIdValue = facilityValue ? String(facilityValue).trim() : '';
-      const facility = facilityById.get(facilityIdValue) || facilityByName.get(facilityIdValue.toLowerCase());
+      let facility = facilityById.get(facilityIdValue) || facilityByName.get(facilityIdValue.toLowerCase());
+      if (!facility && !facilityIdValue && companyFacilities.length === 1) {
+        facility = companyFacilities[0];
+      }
 
-        if (!name || !category || !facility) {
-          if (name && category && facilityIdValue) {
-            errors.push({ row: index + 2, error: 'facility not found (use facility name or ID)' });
-          } else {
-            errors.push({ row: index + 2, error: 'name, category, and facility are required' });
-          }
+        if (!facility) {
+          errors.push({ row: index + 2, error: 'facility is required (use facility name or ID)' });
           continue;
         }
 
@@ -1790,10 +1790,12 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
         }
 
         const equipmentId = generateId('EQP');
+        const equipmentName = name ? String(name).trim() : `Equipment ${index + 1}`;
+        const equipmentCategory = category ? String(category).trim() : 'Uncategorized';
         const equipment = {
           id: equipmentId,
-          name: String(name).trim(),
-          category: String(category).trim(),
+          name: equipmentName,
+          category: equipmentCategory,
           brand: normalizedRow.brand || '',
           model: normalizedRow.model || '',
           serialNumber: serialNumberRaw || '',
@@ -1829,7 +1831,7 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
         userName: userProfile.name,
         userRole: binding.role,
         companyId,
-        details: { equipmentName: name, category, facility: facility.name }
+        details: { equipmentName, category: equipmentCategory, facility: facility.name }
       });
 
         created.push(equipment);
