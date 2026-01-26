@@ -76,7 +76,14 @@ export default function App() {
   useEffect(() => {
     const initSession = async () => {
       const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
+      let token = data.session?.access_token || '';
+
+      if (data.session?.refresh_token) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (!refreshError && refreshed.session?.access_token) {
+          token = refreshed.session.access_token;
+        }
+      }
 
       if (token) {
         setAccessToken(token);
