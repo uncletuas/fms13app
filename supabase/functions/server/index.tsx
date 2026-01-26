@@ -167,27 +167,62 @@ const buildInvitationEmail = (params: {
   invitedByName?: string;
   categories?: string[];
   facilityIds?: string[];
+  actionUrl?: string;
 }) => {
   const facilityLine = params.facilityIds && params.facilityIds.length
-    ? `<li><strong>Facilities:</strong> ${params.facilityIds.join(', ')}</li>`
+    ? `<div><span style="color:#64748b;">Facilities</span><div style="font-weight:600;color:#0f172a;">${params.facilityIds.join(', ')}</div></div>`
     : '';
   const categoryLine = params.categories && params.categories.length
-    ? `<li><strong>Scope:</strong> ${params.categories.join(', ')}</li>`
+    ? `<div><span style="color:#64748b;">Scope</span><div style="font-weight:600;color:#0f172a;">${params.categories.join(', ')}</div></div>`
+    : '';
+  const actionLine = params.actionUrl
+    ? `<a href="${params.actionUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;">Review invitation</a>`
+    : '';
+  const actionLink = params.actionUrl
+    ? `<p style="margin:12px 0 0;color:#64748b;font-size:13px;">If the button doesn't open, copy this link:<br /><span style="color:#0f172a;word-break:break-all;">${params.actionUrl}</span></p>`
     : '';
 
   return {
     subject: `Invitation to join ${params.companyName} on FMS13`,
     html: `
-      <p>You have been invited to join ${params.companyName} as a contractor.</p>
-      <p><strong>Invited by:</strong> ${params.invitedByName || 'Company admin'}</p>
-      ${facilityLine || categoryLine ? `<ul>${facilityLine}${categoryLine}</ul>` : ''}
-      <p>Next steps:</p>
-      <ol>
-        <li>Sign in to your FMS13 account.</li>
-        <li>Open the Notifications page.</li>
-        <li>Review the invitation and choose Accept or Decline.</li>
-      </ol>
-      <p>Accepting the invitation adds the company to your switcher.</p>
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>FMS13 Invitation</title>
+        </head>
+        <body style="margin:0;background:#eef2f7;font-family:Inter,Segoe UI,Arial,sans-serif;color:#0f172a;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="padding:32px 16px;">
+            <tr>
+              <td align="center">
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;background:#ffffff;border-radius:18px;box-shadow:0 20px 45px rgba(15,23,42,0.08);overflow:hidden;">
+                  <tr>
+                    <td style="padding:28px 28px 16px;">
+                      <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;">FMS13 Contractor Invitation</div>
+                      <h1 style="margin:8px 0 10px;font-size:26px;">You're invited to ${params.companyName}</h1>
+                      <p style="margin:0 0 18px;color:#64748b;">${params.invitedByName || 'A company admin'} would like to assign work to you. Review the scope below and respond securely.</p>
+                      <div style="display:grid;gap:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px;">
+                        <div><span style="color:#64748b;">Company</span><div style="font-weight:600;color:#0f172a;">${params.companyName}</div></div>
+                        ${facilityLine}
+                        ${categoryLine}
+                      </div>
+                      <div style="margin:20px 0;">${actionLine}</div>
+                      <p style="margin:0;color:#94a3b8;font-size:13px;">This secure link is unique to your email and expires after you respond. Do not forward it.</p>
+                      ${actionLink}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 28px 24px;color:#94a3b8;font-size:12px;">
+                      Need help? Contact your company admin or reply to this email.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
     `
   };
 };

@@ -767,6 +767,163 @@ const getCompanyAdminEmails = async (companyId: string) => {
   return emails.filter((email: string | null) => email);
 };
 
+const normalizeEmail = (value?: string | null) => (value || '').trim().toLowerCase();
+
+const maskEmail = (email: string) => {
+  const [name, domain] = email.split('@');
+  if (!domain) return email;
+  const maskedName = name.length <= 2
+    ? `${name[0] || ''}*`
+    : `${name[0]}${'*'.repeat(Math.min(4, name.length - 2))}${name.slice(-1)}`;
+  const domainParts = domain.split('.');
+  const domainName = domainParts[0] || '';
+  const maskedDomain = domainName.length <= 2
+    ? `${domainName[0] || ''}*`
+    : `${domainName[0]}${'*'.repeat(Math.min(4, domainName.length - 2))}${domainName.slice(-1)}`;
+  const tld = domainParts.slice(1).join('.');
+  return `${maskedName}@${maskedDomain}${tld ? `.${tld}` : ''}`;
+};
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+};
+
+const renderEmailPage = (body: string, title = 'FMS13 Invitation') => `
+  <!doctype html>
+  <html>
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>${title}</title>
+      <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+          background: #eef2f7;
+          color: #0f172a;
+        }
+        .wrap {
+          max-width: 960px;
+          margin: 32px auto;
+          padding: 0 16px;
+        }
+        .card {
+          background: #ffffff;
+          border-radius: 20px;
+          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+          padding: 28px;
+        }
+        .eyebrow {
+          font-size: 12px;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: #94a3b8;
+          margin-bottom: 12px;
+        }
+        h1 {
+          font-size: 28px;
+          margin: 0 0 8px;
+        }
+        h2 {
+          font-size: 18px;
+          margin: 0 0 12px;
+        }
+        p {
+          color: #475569;
+          margin: 0 0 12px;
+        }
+        .pill {
+          display: inline-flex;
+          align-items: center;
+          padding: 6px 12px;
+          border-radius: 999px;
+          background: #e2e8f0;
+          color: #0f172a;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        .grid {
+          display: grid;
+          gap: 14px;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          padding: 16px;
+          border-radius: 14px;
+        }
+        .label {
+          font-size: 12px;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+        .value {
+          font-weight: 600;
+          color: #0f172a;
+          margin-top: 4px;
+        }
+        .divider {
+          height: 1px;
+          background: #e2e8f0;
+          margin: 20px 0;
+        }
+        .actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-top: 18px;
+        }
+        .btn {
+          border: none;
+          border-radius: 12px;
+          padding: 12px 18px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .btn.primary {
+          background: #0f172a;
+          color: #ffffff;
+        }
+        .btn.secondary {
+          background: #f1f5f9;
+          color: #0f172a;
+        }
+        .input, .textarea {
+          width: 100%;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 12px;
+          font-size: 14px;
+          margin-top: 6px;
+        }
+        .textarea { min-height: 110px; resize: vertical; }
+        .note {
+          font-size: 12px;
+          color: #94a3b8;
+        }
+        .status {
+          padding: 16px;
+          border-radius: 14px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+        }
+        @media (max-width: 640px) {
+          .card { padding: 20px; }
+          h1 { font-size: 22px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="wrap">${body}</div>
+    </body>
+  </html>
+`;
+
 const buildInvitationEmail = (params: {
   companyName: string;
   invitedByName?: string;
@@ -775,28 +932,59 @@ const buildInvitationEmail = (params: {
   actionUrl?: string;
 }) => {
   const facilityLine = params.facilityIds && params.facilityIds.length
-    ? `<li><strong>Facilities:</strong> ${params.facilityIds.join(', ')}</li>`
+    ? `<div><span style="color:#64748b;">Facilities</span><div style="font-weight:600;color:#0f172a;">${params.facilityIds.join(', ')}</div></div>`
     : '';
   const categoryLine = params.categories && params.categories.length
-    ? `<li><strong>Scope:</strong> ${params.categories.join(', ')}</li>`
+    ? `<div><span style="color:#64748b;">Scope</span><div style="font-weight:600;color:#0f172a;">${params.categories.join(', ')}</div></div>`
     : '';
   const actionLine = params.actionUrl
-    ? `<p><a href="${params.actionUrl}" style="display: inline-block; background: #0f766e; color: #fff; padding: 10px 16px; border-radius: 6px; text-decoration: none;">Review invitation</a></p>`
+    ? `<a href="${params.actionUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;">Review invitation</a>`
+    : '';
+  const actionLink = params.actionUrl
+    ? `<p style="margin:12px 0 0;color:#64748b;font-size:13px;">If the button doesn't open, copy this link:<br /><span style="color:#0f172a;word-break:break-all;">${params.actionUrl}</span></p>`
     : '';
 
   return {
     subject: `Invitation to join ${params.companyName} on FMS13`,
     html: `
-      <p>You have been invited to join ${params.companyName} as a contractor.</p>
-      <p><strong>Invited by:</strong> ${params.invitedByName || 'Company admin'}</p>
-      ${facilityLine || categoryLine ? `<ul>${facilityLine}${categoryLine}</ul>` : ''}
-      ${actionLine}
-      <p>Next steps:</p>
-      <ol>
-        <li>Open the invitation link.</li>
-        <li>Review the details and choose Accept or Decline.</li>
-      </ol>
-      <p>Accepting the invitation adds the company to your switcher.</p>
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>FMS13 Invitation</title>
+        </head>
+        <body style="margin:0;background:#eef2f7;font-family:Inter,Segoe UI,Arial,sans-serif;color:#0f172a;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="padding:32px 16px;">
+            <tr>
+              <td align="center">
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;background:#ffffff;border-radius:18px;box-shadow:0 20px 45px rgba(15,23,42,0.08);overflow:hidden;">
+                  <tr>
+                    <td style="padding:28px 28px 16px;">
+                      <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;">FMS13 Contractor Invitation</div>
+                      <h1 style="margin:8px 0 10px;font-size:26px;">You're invited to ${params.companyName}</h1>
+                      <p style="margin:0 0 18px;color:#64748b;">${params.invitedByName || 'A company admin'} would like to assign work to you. Review the scope below and respond securely.</p>
+                      <div style="display:grid;gap:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px;">
+                        <div><span style="color:#64748b;">Company</span><div style="font-weight:600;color:#0f172a;">${params.companyName}</div></div>
+                        ${facilityLine}
+                        ${categoryLine}
+                      </div>
+                      <div style="margin:20px 0;">${actionLine}</div>
+                      <p style="margin:0;color:#94a3b8;font-size:13px;">This secure link is unique to your email and expires after you respond. Do not forward it.</p>
+                      ${actionLink}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 28px 24px;color:#94a3b8;font-size:12px;">
+                      Need help? Contact your company admin or reply to this email.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
     `
   };
 };
@@ -3862,9 +4050,12 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
 
     const invitationId = generateId('INV');
     const emailDecisionToken = generateId('TOK');
+    const contractorEmail = contractorProfile.email || await getUserEmail(resolvedContractorId);
     const invitation = {
       id: invitationId,
-        contractorId: resolvedContractorId,
+      contractorId: resolvedContractorId,
+      contractorName: contractorProfile.name,
+      contractorEmail: contractorEmail || '',
       companyId,
       companyName: company.name,
       facilityIds: facilityIds || [],
@@ -3903,7 +4094,6 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
       details: { invitationId, contractorName: contractorProfile.name }
     });
 
-    const contractorEmail = await getUserEmail(resolvedContractorId);
     if (contractorEmail) {
       const actionUrl = `${ACTION_BASE_URL}/contractor-invitations/${invitationId}/respond-email?token=${encodeURIComponent(emailDecisionToken)}`;
       const invitationEmail = buildInvitationEmail({
@@ -4725,9 +4915,12 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
 
     const invitationId = generateId('INV');
     const emailDecisionToken = generateId('TOK');
+    const contractorEmail = contractorProfile.email || await getUserEmail(resolvedContractorId);
     const invitation = {
       id: invitationId,
       contractorId: resolvedContractorId,
+      contractorName: contractorProfile.name,
+      contractorEmail: contractorEmail || '',
       companyId,
       companyName: company.name,
       facilityIds: facilityIds || [],
@@ -4766,7 +4959,6 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
       details: { invitationId, contractorName: contractorProfile.name }
     });
 
-    const contractorEmail = await getUserEmail(resolvedContractorId);
     if (contractorEmail) {
       const actionUrl = `${ACTION_BASE_URL}/contractor-invitations/${invitationId}/respond-email?token=${encodeURIComponent(emailDecisionToken)}`;
       const invitationEmail = buildInvitationEmail({
@@ -4833,68 +5025,118 @@ app.get("/make-server-fc558f72/contractor-invitations/:id/respond-email", async 
     const token = c.req.query('token');
 
     if (!token) {
-      return c.html('<p>Missing response token.</p>', 400);
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Missing response token</h1>
+          <p>The invitation link is incomplete. Please reopen the link from your email.</p>
+        </div>
+      `), 400);
     }
 
     const invitation = await kv.get(`contractor-invitation:${invitationId}`);
     if (!invitation) {
-      return c.html('<p>Invitation not found.</p>', 404);
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Invitation not found</h1>
+          <p>The invitation may have expired or was removed.</p>
+        </div>
+      `), 404);
     }
 
     if (invitation.emailDecisionToken !== token) {
-      return c.html('<p>This response link is invalid.</p>', 403);
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Invalid link</h1>
+          <p>This secure link is no longer valid. Please request a new invitation.</p>
+        </div>
+      `), 403);
     }
 
     if (invitation.status !== 'pending') {
-      return c.html('<p>This invitation has already been responded to.</p>', 200);
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Invitation already processed</h1>
+          <p>This invitation has already been ${invitation.status}.</p>
+        </div>
+      `), 200);
     }
 
     const actionUrl = `${ACTION_BASE_URL}/contractor-invitations/${invitationId}/respond-email?token=${encodeURIComponent(token)}`;
-    const facilityLine = invitation.facilityIds?.length
-      ? `<p><strong>Facilities:</strong> ${invitation.facilityIds.join(', ')}</p>`
-      : '';
-    const categoryLine = invitation.categories?.length
-      ? `<p><strong>Scope:</strong> ${invitation.categories.join(', ')}</p>`
-      : '';
+    const facilities = await Promise.all(
+      (invitation.facilityIds || []).map(async (facilityId: string) => {
+        const record = await kv.get(`facility:${facilityId}`);
+        return record?.name || facilityId;
+      })
+    );
+    const facilityText = facilities.length ? facilities.join(', ') : 'All assigned facilities';
+    const categoryText = invitation.categories?.length ? invitation.categories.join(', ') : 'General services';
+    const invitedEmail = normalizeEmail(invitation.contractorEmail || await getUserEmail(invitation.contractorId));
+    const maskedEmail = invitedEmail ? maskEmail(invitedEmail) : 'the invited email address';
+    c.header('Cache-Control', 'no-store');
 
     return c.html(`
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>Respond to invitation</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; background: #f8fafc; padding: 24px;">
-          <div style="max-width: 720px; margin: 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
-            <h2 style="margin-top: 0;">Contractor invitation</h2>
-            <p style="color: #475569;">${invitation.companyName || 'Company'} invitation</p>
-            <div style="background: #f1f5f9; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-              <p><strong>Company:</strong> ${invitation.companyName || '-'}</p>
-              <p><strong>Invited by:</strong> ${invitation.invitedByName || 'Company admin'}</p>
-              ${facilityLine}
-              ${categoryLine}
+      ${renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Contractor Invitation</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+            <div>
+              <h1>Review invitation</h1>
+              <p>${invitation.companyName || 'Company'} has invited you to collaborate on facility operations.</p>
             </div>
-            <div style="display: grid; gap: 16px;">
-              <form method="POST" action="${actionUrl}" style="border: 1px solid #e2e8f0; padding: 16px; border-radius: 8px;">
-                <h3 style="margin-top: 0;">Accept invitation</h3>
-                <input type="hidden" name="decision" value="approved" />
-                <button type="submit" style="margin-top: 12px; background: #0f766e; color: #fff; border: none; padding: 10px 16px; border-radius: 6px;">Accept</button>
-              </form>
-              <form method="POST" action="${actionUrl}" style="border: 1px solid #e2e8f0; padding: 16px; border-radius: 8px;">
-                <h3 style="margin-top: 0;">Reject invitation</h3>
-                <input type="hidden" name="decision" value="rejected" />
-                <label style="display: block; font-size: 14px; margin-bottom: 6px;">Reason (optional)</label>
-                <textarea name="reason" rows="3" style="width: 100%; padding: 8px; border: 1px solid #cbd5f5; border-radius: 6px;"></textarea>
-                <button type="submit" style="margin-top: 12px; background: #b91c1c; color: #fff; border: none; padding: 10px 16px; border-radius: 6px;">Reject</button>
-              </form>
+            <span class="pill">Status: Pending</span>
+          </div>
+          <div class="grid" style="margin-top:16px;">
+            <div>
+              <div class="label">Company</div>
+              <div class="value">${invitation.companyName || '-'}</div>
+            </div>
+            <div>
+              <div class="label">Invited by</div>
+              <div class="value">${invitation.invitedByName || 'Company admin'}</div>
+            </div>
+            <div>
+              <div class="label">Facilities</div>
+              <div class="value">${facilityText}</div>
+            </div>
+            <div>
+              <div class="label">Scope</div>
+              <div class="value">${categoryText}</div>
+            </div>
+            <div>
+              <div class="label">Sent</div>
+              <div class="value">${formatDateTime(invitation.createdAt)}</div>
             </div>
           </div>
-        </body>
-      </html>
+          <div class="divider"></div>
+          <h2>Confirm your email to respond</h2>
+          <p>For security, this link only works for ${maskedEmail}. Enter the invitation email to continue.</p>
+          <form method="POST" action="${actionUrl}">
+            <label class="label">Invitation email</label>
+            <input class="input" type="email" name="email" required placeholder="name@company.com" />
+            <label class="label" style="margin-top:16px;">Rejection reason (optional)</label>
+            <textarea class="textarea" name="reason" placeholder="Share a brief reason if declining."></textarea>
+            <div class="actions">
+              <button class="btn primary" type="submit" name="decision" value="approved">Accept invitation</button>
+              <button class="btn secondary" type="submit" name="decision" value="rejected">Reject invitation</button>
+            </div>
+            <p class="note">This response is logged and visible to the company admin.</p>
+          </form>
+        </div>
+      `, 'FMS13 Invitation Review')}
     `);
   } catch (error) {
     console.log('Email invitation response page error:', error);
-    return c.html('<p>Failed to load response page.</p>', 500);
+    return c.html(renderEmailPage(`
+      <div class="card">
+        <div class="eyebrow">Secure Invitation</div>
+        <h1>Unable to load</h1>
+        <p>We could not load this invitation. Please try again later.</p>
+      </div>
+    `), 500);
   }
 });
 
@@ -4909,22 +5151,68 @@ app.post("/make-server-fc558f72/contractor-invitations/:id/respond-email", async
     const formData = await c.req.formData();
     const decision = formData.get('decision')?.toString();
     const reason = formData.get('reason')?.toString() || '';
+    const submittedEmail = normalizeEmail(formData.get('email')?.toString());
 
     if (!decision || !['approved', 'rejected'].includes(decision)) {
-      return c.html('<p>Invalid decision.</p>', 400);
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Invalid response</h1>
+          <p>Please select Accept or Reject and try again.</p>
+        </div>
+      `), 400);
     }
 
     const invitation = await kv.get(`contractor-invitation:${invitationId}`);
     if (!invitation) {
-      return c.html('<p>Invitation not found.</p>', 404);
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Invitation not found</h1>
+          <p>This invitation no longer exists.</p>
+        </div>
+      `), 404);
     }
 
     if (invitation.emailDecisionToken !== token) {
-      return c.html('<p>This response link is invalid.</p>', 403);
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Invalid link</h1>
+          <p>This secure link is invalid or expired.</p>
+        </div>
+      `), 403);
     }
 
     if (invitation.status !== 'pending') {
-      return c.html('<p>This invitation has already been responded to.</p>', 200);
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Already processed</h1>
+          <p>This invitation has already been ${invitation.status}.</p>
+        </div>
+      `), 200);
+    }
+
+    if (!submittedEmail) {
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Email required</h1>
+          <p>Please enter the email address that received this invitation.</p>
+        </div>
+      `), 400);
+    }
+
+    const allowedEmail = normalizeEmail(invitation.contractorEmail || await getUserEmail(invitation.contractorId));
+    if (allowedEmail && submittedEmail !== allowedEmail) {
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Email does not match</h1>
+          <p>This invitation can only be accepted by the email it was sent to.</p>
+        </div>
+      `), 403);
     }
 
     await kv.set(`contractor-invitation:${invitationId}`, {
@@ -4932,6 +5220,7 @@ app.post("/make-server-fc558f72/contractor-invitations/:id/respond-email", async
       status: decision,
       respondedAt: new Date().toISOString(),
       responseReason: reason || '',
+      respondedEmail: submittedEmail,
       emailDecisionToken: null
     });
 
@@ -5006,10 +5295,25 @@ app.post("/make-server-fc558f72/contractor-invitations/:id/respond-email", async
       });
     }
 
-    return c.html(`<p>Invitation ${decision === 'approved' ? 'accepted' : 'rejected'} successfully.</p>`);
+    return c.html(renderEmailPage(`
+      <div class="card">
+        <div class="eyebrow">Secure Invitation</div>
+        <h1>Invitation ${decision === 'approved' ? 'accepted' : 'rejected'}</h1>
+        <div class="status">
+          <p>Your response has been recorded. You can close this page.</p>
+          <p class="note">If you need help, contact the company admin who sent the invitation.</p>
+        </div>
+      </div>
+    `));
   } catch (error) {
     console.log('Email invitation response error:', error);
-    return c.html('<p>Failed to respond to invitation.</p>', 500);
+    return c.html(renderEmailPage(`
+      <div class="card">
+        <div class="eyebrow">Secure Invitation</div>
+        <h1>Submission failed</h1>
+        <p>We could not record your response. Please try again later.</p>
+      </div>
+    `), 500);
   }
 });
 
