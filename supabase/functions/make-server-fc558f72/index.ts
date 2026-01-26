@@ -166,6 +166,11 @@ const createAuthUser = async (params: { email: string; password: string; metadat
       email_confirm: true
     });
     if (!error && data?.user) {
+      try {
+        await supabaseAdmin.auth.admin.updateUserById(data.user.id, { email_confirm: true });
+      } catch (_error) {
+        // ignore
+      }
       return { user: data.user, session: null, error: null };
     }
     console.log('Admin create user failed, falling back to signUp:', error?.message || error);
@@ -1582,11 +1587,40 @@ app.get("/make-server-fc558f72/auth/session", async (c) => {
       name: user.user_metadata?.name,
       shortId: fallbackShortId
     };
-    const allBindings = await getCompanyBindings(user.id);
+    let allBindings = await getCompanyBindings(user.id);
+
+    let finalProfile = fallbackProfile;
+    if ((fallbackProfile.role || user.user_metadata?.role) === 'facility_supervisor' && allBindings.length === 0) {
+      let inferredCompanyId = fallbackProfile.companyId || '';
+      if (!inferredCompanyId && fallbackProfile.createdBy) {
+        const creatorBindings = await getCompanyBindings(fallbackProfile.createdBy);
+        if (creatorBindings.length > 0) {
+          inferredCompanyId = creatorBindings[0].companyId;
+        }
+      }
+
+      if (inferredCompanyId) {
+        const supervisorBinding = {
+          userId: user.id,
+          companyId: inferredCompanyId,
+          role: 'facility_supervisor',
+          assignedAt: new Date().toISOString(),
+          assignedBy: fallbackProfile.createdBy || user.id,
+          facilityIds: [],
+        };
+        await kv.set(`user-company:${user.id}:${inferredCompanyId}`, supervisorBinding);
+        await upsertCompanyUser(supervisorBinding);
+        const updatedProfile = { ...fallbackProfile, companyId: inferredCompanyId, role: 'facility_supervisor' };
+        await kv.set(`user:${user.id}`, updatedProfile);
+        await upsertUserProfile(updatedProfile);
+        finalProfile = updatedProfile;
+        allBindings = await getCompanyBindings(user.id);
+      }
+    }
 
     return c.json({ 
       success: true,
-      user: fallbackProfile,
+      user: finalProfile,
       companyBindings: allBindings
     });
   } catch (error) {
@@ -4164,8 +4198,9 @@ app.post("/make-server-fc558f72/users/facility-supervisor", async (c) => {
     }
 
     const { email, password, name, phone, companyId } = await c.req.json();
+    const cleanPassword = typeof password === 'string' ? password.trim() : '';
 
-    if (!email || !password || !name || !companyId) {
+    if (!email || !cleanPassword || !name || !companyId) {
       return c.json({ error: 'Missing required fields' }, 400);
     }
 
@@ -4176,7 +4211,7 @@ app.post("/make-server-fc558f72/users/facility-supervisor", async (c) => {
 
     const { user: createdUser, error: createError } = await createAuthUser({
       email,
-      password,
+      password: cleanPassword,
       metadata: { name, role: 'facility_supervisor' }
     });
 
@@ -4196,6 +4231,7 @@ app.post("/make-server-fc558f72/users/facility-supervisor", async (c) => {
       createdAt: new Date().toISOString(),
       createdBy: user.id,
       isGlobalUser: true,
+      companyId,
       shortId
     };
 
