@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { toast } from 'sonner';
 import { Building2, ShieldCheck, Users, Wrench } from 'lucide-react';
@@ -244,61 +244,62 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10 lg:grid-cols-[1.1fr,1fr] lg:items-center">
-        <div className="space-y-8">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-slate-200 to-slate-100 text-foreground">
+      <div className="pointer-events-none absolute -top-40 right-0 h-[28rem] w-[28rem] rounded-full bg-primary/15 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-48 left-10 h-[26rem] w-[26rem] rounded-full bg-slate-300/50 blur-3xl" />
+
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-10 lg:flex-row lg:items-center lg:px-6">
+        <section className="relative flex-1 overflow-hidden rounded-[32px] bg-gradient-to-br from-[#183b5a] via-[#143652] to-[#0f2b43] p-8 text-white shadow-[0_40px_80px_-40px_rgba(15,23,42,0.8)]">
+          <div className="pointer-events-none absolute -left-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
+          <div className="pointer-events-none absolute right-6 top-8 h-24 w-24 rounded-2xl bg-white/10" />
+
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-white">
-              <Building2 className="h-7 w-7 text-primary" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
+              <Building2 className="h-6 w-6 text-white" />
             </div>
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-slate-500">FMS.13</p>
-              <h1 className="text-3xl font-semibold text-slate-900">Facility Management System</h1>
+              <p className="text-xs uppercase tracking-[0.32em] text-white/70">FMS.13</p>
+              <h1 className="text-3xl font-semibold">Facility Management System</h1>
             </div>
           </div>
 
-          <p className="text-lg text-slate-600">
+          <p className="mt-6 text-lg text-white/80">
             Operate every branch with security, audit trails, and fast contractor response. 
             Built for multi-tenant operations with zero implicit access.
           </p>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="border border-white/70">
-              <CardContent className="p-4">
-                <ShieldCheck className="h-5 w-5 text-primary" />
-                <p className="mt-3 text-sm font-medium text-slate-900">Zero implicit access</p>
-                <p className="mt-2 text-xs text-slate-500">Invitation + approval enforced</p>
-              </CardContent>
-            </Card>
-            <Card className="border border-white/70">
-              <CardContent className="p-4">
-                <Users className="h-5 w-5 text-primary" />
-                <p className="mt-3 text-sm font-medium text-slate-900">Multi-branch control</p>
-                <p className="mt-2 text-xs text-slate-500">Company, facilities, roles</p>
-              </CardContent>
-            </Card>
-            <Card className="border border-white/70">
-              <CardContent className="p-4">
-                <Wrench className="h-5 w-5 text-primary" />
-                <p className="mt-3 text-sm font-medium text-slate-900">Contractor workflows</p>
-                <p className="mt-2 text-xs text-slate-500">Accept, execute, report</p>
-              </CardContent>
-            </Card>
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+              <ShieldCheck className="h-5 w-5 text-white" />
+              <p className="mt-3 text-sm font-medium">Zero implicit access</p>
+              <p className="mt-1 text-xs text-white/70">Invitation + approval enforced</p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+              <Users className="h-5 w-5 text-white" />
+              <p className="mt-3 text-sm font-medium">Multi-branch control</p>
+              <p className="mt-1 text-xs text-white/70">Company, facilities, roles</p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+              <Wrench className="h-5 w-5 text-white" />
+              <p className="mt-3 text-sm font-medium">Contractor workflows</p>
+              <p className="mt-1 text-xs text-white/70">Accept, execute, report</p>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <Card className="border-white/70 bg-white/90 text-slate-900">
-          <CardHeader>
-            <CardTitle className="text-2xl font-semibold">Secure Access</CardTitle>
-            <CardDescription>Sign in or register with the correct role.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="login" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="login">Sign In</TabsTrigger>
-                <TabsTrigger value="admin">Company Admin</TabsTrigger>
-                <TabsTrigger value="contractor">Contractor</TabsTrigger>
-              </TabsList>
+        <section className="w-full max-w-lg">
+          <div className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_30px_70px_-40px_rgba(15,23,42,0.6)] backdrop-blur">
+            <CardHeader className="px-0 pt-0">
+              <CardTitle className="text-2xl font-semibold text-slate-900">Secure Access</CardTitle>
+              <CardDescription>Sign in or register with the correct role.</CardDescription>
+            </CardHeader>
+            <CardContent className="px-0">
+              <Tabs defaultValue="login" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="login">Sign In</TabsTrigger>
+                  <TabsTrigger value="admin">Company Admin</TabsTrigger>
+                  <TabsTrigger value="contractor">Contractor</TabsTrigger>
+                </TabsList>
 
               <TabsContent value="login">
                 {recoveryMode ? (
@@ -572,8 +573,9 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                 </form>
               </TabsContent>
             </Tabs>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </div>
+        </section>
       </div>
     </div>
   );

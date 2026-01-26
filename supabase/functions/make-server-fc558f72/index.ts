@@ -471,6 +471,22 @@ const notifySupervisors = async (companyId?: string, activity?: any) => {
     const supervisors = bindings.filter((binding: any) => binding.companyId === companyId && binding.role === 'facility_supervisor');
     if (!supervisors.length) return;
 
+    const company = await kv.get(`company:${companyId}`);
+    const companyName = company?.name || 'Company';
+    const readableAction = activity.action.replace(/_/g, ' ');
+    const subject = `[FMS13] ${companyName} update: ${readableAction}`;
+    const emailBody = `
+      <div style="font-family:Inter,Segoe UI,Arial,sans-serif;color:#0f172a;">
+        <h2 style="margin:0 0 8px;">${companyName} activity update</h2>
+        <p style="margin:0 0 16px;color:#475569;">${activity.userName || 'User'} ${readableAction} ${activity.entityType} ${activity.entityId}.</p>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;">
+          <p style="margin:0 0 6px;"><strong>Actor:</strong> ${activity.userName || 'User'} (${activity.userRole || '-'})</p>
+          <p style="margin:0 0 6px;"><strong>Entity:</strong> ${activity.entityType} ${activity.entityId}</p>
+          <p style="margin:0;"><strong>Time:</strong> ${formatDateTime(activity.timestamp)}</p>
+        </div>
+      </div>
+    `;
+
     const notifications = supervisors.map((binding: any) => ({
       id: generateId('NOT'),
       userId: binding.userId,
@@ -487,6 +503,16 @@ const notifySupervisors = async (companyId?: string, activity?: any) => {
       notifications.map((n: any) => `notification:${n.id}`),
       notifications
     );
+
+    const emails = await Promise.all(supervisors.map((binding: any) => getUserEmail(binding.userId)));
+    const recipients = Array.from(new Set(emails.filter((email: string | null) => email)));
+    if (recipients.length > 0) {
+      await sendEmail({
+        to: recipients,
+        subject,
+        html: emailBody
+      });
+    }
   } catch (error) {
     console.log('Notify supervisors error:', error);
   }
@@ -1845,6 +1871,7 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
       serialNumber, 
       installDate, 
       warrantyPeriod, 
+      imageUrl,
       facilityId,
       companyId,
       contractorId,
@@ -1890,6 +1917,7 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
       serialNumber: serialNumber || '',
       installDate: installDate || '',
       warrantyPeriod: warrantyPeriod || '',
+      imageUrl: imageUrl || '',
       facilityId,
       companyId,
       contractorId: resolvedContractorId || null,
@@ -2038,6 +2066,7 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
         || normalizedRow.equipmentcategory;
       const facilityValue =
         normalizedRow.facility_id
+        || normalizedRow.facilityid
         || normalizedRow.facility
         || normalizedRow.facility_name
         || normalizedRow.facility_branch
@@ -2056,7 +2085,17 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
           continue;
         }
 
-        const serialNumberRaw = normalizedRow.serialnumber || normalizedRow.serial_number || '';
+      const serialNumberRaw = normalizedRow.serialnumber || normalizedRow.serial_number || '';
+      const imageUrl =
+        normalizedRow.image_url
+        || normalizedRow.imageurl
+        || normalizedRow.image
+        || normalizedRow.photo
+        || normalizedRow.picture
+        || normalizedRow.google_drive_url
+        || normalizedRow.drive_url
+        || normalizedRow.drive_link
+        || '';
         const serialKey = serialNumberRaw
           ? `${facility.id}:${String(serialNumberRaw).trim().toLowerCase()}`
           : '';
@@ -2093,6 +2132,7 @@ app.post("/make-server-fc558f72/equipment", async (c) => {
           brand: normalizedRow.brand || '',
           model: normalizedRow.model || '',
           serialNumber: serialNumberRaw || '',
+          imageUrl: imageUrl ? String(imageUrl).trim() : '',
         installDate: normalizedRow.installdate || normalizedRow.install_date || '',
         warrantyPeriod: normalizedRow.warrantyperiod || normalizedRow.warranty_period || '',
         contractorId: resolvedContractorId || null,
@@ -2281,7 +2321,77 @@ app.put("/make-server-fc558f72/equipment/:id", async (c) => {
     console.log('Update equipment error:', error);
     return c.json({ error: 'Failed to update equipment' }, 500);
   }
-  });
+});
+
+// Upload equipment image
+app.post("/make-server-fc558f72/equipment/:id/image", async (c) => {
+  try {
+    const { error, user } = await verifyUser(c.req.raw);
+    if (error || !user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const equipmentId = c.req.param('id');
+    const equipment = await kv.get(`equipment:${equipmentId}`);
+    if (!equipment) {
+      return c.json({ error: 'Equipment not found' }, 404);
+    }
+
+    const binding = await checkCompanyAccess(user.id, equipment.companyId);
+    if (!binding || (binding.role !== 'facility_manager' && binding.role !== 'company_admin')) {
+      return c.json({ error: 'No access to update this equipment' }, 403);
+    }
+
+    const formData = await c.req.formData();
+    const file = formData.get('file');
+    if (!(file instanceof File)) {
+      return c.json({ error: 'Image file is required' }, 400);
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+    await ensureAttachmentsBucket(supabaseAdmin);
+
+    const safeName = sanitizeFileName(file.name);
+    const path = `${equipment.companyId}/equipment/${equipmentId}/image/${Date.now()}-${safeName}`;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+
+    const { error: uploadError } = await supabaseAdmin
+      .storage
+      .from(ATTACHMENTS_BUCKET)
+      .upload(path, bytes, { contentType: file.type, upsert: false });
+
+    if (uploadError) {
+      console.log('Upload equipment image error:', uploadError.message);
+      return c.json({ error: 'Failed to upload equipment image' }, 500);
+    }
+
+    const { data: publicData } = supabaseAdmin.storage.from(ATTACHMENTS_BUCKET).getPublicUrl(path);
+    const updatedEquipment = {
+      ...equipment,
+      imageUrl: publicData.publicUrl,
+      updatedAt: new Date().toISOString()
+    };
+
+    await kv.set(`equipment:${equipmentId}`, updatedEquipment);
+
+    const userProfile = await kv.get(`user:${user.id}`);
+    await logActivity({
+      entityType: 'equipment',
+      entityId: equipmentId,
+      action: 'equipment_image_uploaded',
+      userId: user.id,
+      userName: userProfile?.name || 'User',
+      userRole: binding.role,
+      companyId: equipment.companyId,
+      details: { imageUrl: publicData.publicUrl }
+    });
+
+    return c.json({ success: true, imageUrl: publicData.publicUrl, equipment: updatedEquipment });
+  } catch (error) {
+    console.log('Upload equipment image exception:', error);
+    return c.json({ error: 'Failed to upload equipment image' }, 500);
+  }
+});
 
   // Equipment history (audit trail)
   app.get("/make-server-fc558f72/equipment/:id/history", async (c) => {
@@ -4676,6 +4786,62 @@ app.put("/make-server-fc558f72/users/:id", async (c) => {
 // ============================================
 // ACTIVITY LOG ROUTES
 // ============================================
+
+// Get activity log for current user (optional company + date filters)
+app.get("/make-server-fc558f72/activity/user", async (c) => {
+  try {
+    const { error, user } = await verifyUser(c.req.raw);
+    if (error || !user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const companyId = c.req.query('companyId');
+    const start = c.req.query('start');
+    const end = c.req.query('end');
+
+    const supabaseAdmin = getSupabaseAdmin();
+    let query = supabaseAdmin
+      .from('fms13_audit_logs')
+      .select('*')
+      .eq('actor_id', user.id);
+
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+    if (start) {
+      query = query.gte('created_at', new Date(start).toISOString());
+    }
+    if (end) {
+      const endDate = new Date(end);
+      endDate.setHours(23, 59, 59, 999);
+      query = query.lte('created_at', endDate.toISOString());
+    }
+
+    const { data, error: dbError } = await query.order('created_at', { ascending: false });
+    if (dbError) {
+      console.log('Get user activity error:', dbError.message);
+      return c.json({ error: 'Failed to get activity log' }, 500);
+    }
+
+    const activities = (data || []).map((row: any) => ({
+      id: row.id,
+      entityType: row.entity_type,
+      entityId: row.entity_id,
+      action: row.action_type,
+      userId: row.actor_id,
+      userName: row.actor_name,
+      userRole: row.actor_role,
+      details: row.details,
+      companyId: row.company_id,
+      timestamp: row.created_at
+    }));
+
+    return c.json({ success: true, activities });
+  } catch (error) {
+    console.log('Get user activity exception:', error);
+    return c.json({ error: 'Failed to get activity log' }, 500);
+  }
+});
 
 // Get activity log for an entity
 app.get("/make-server-fc558f72/activity/:entityType/:entityId", async (c) => {

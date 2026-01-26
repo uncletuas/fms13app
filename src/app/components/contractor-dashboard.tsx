@@ -291,7 +291,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
       <div>
         <Label className="text-xs text-slate-500">Priority</Label>
         <Select value={issuePriorityFilter} onValueChange={setIssuePriorityFilter}>
-          <SelectTrigger className="h-8 w-[140px]">
+          <SelectTrigger className="h-8 w-full sm:w-[140px]">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -411,8 +411,8 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="min-h-screen bg-background flex flex-col">
-          <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-6 py-4 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
+        <SidebarInset className="min-h-screen min-w-0 bg-background flex flex-col">
+          <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-4 py-4 sm:px-6 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-1 items-center gap-3">
                 <SidebarTrigger className="hidden md:inline-flex" />
@@ -429,7 +429,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
               <div className="flex flex-wrap items-center gap-2">
                 {companyBindings.length > 0 && (
                   <Select value={companyId ?? ''} onValueChange={onCompanyChange}>
-                    <SelectTrigger className="w-[220px]">
+                    <SelectTrigger className="w-full sm:w-[220px]">
                       <Building2 className="w-4 h-4 mr-2" />
                       <SelectValue placeholder="Select company" />
                     </SelectTrigger>
@@ -473,11 +473,11 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto">
-            <div className="px-6 py-6 pb-24 space-y-6">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="px-4 py-6 pb-24 sm:px-6 space-y-6">
         {/* Stats Grid */}
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 ${companyId ? 'mb-6' : ''}`}>
-          <Card>
+          <Card className="border-slate-200/80 bg-slate-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Assigned</CardTitle>
               <Wrench className="w-4 h-4 text-slate-500" />
@@ -487,7 +487,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-sky-100 bg-sky-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending</CardTitle>
               <Clock className="w-4 h-4 text-blue-500" />
@@ -497,7 +497,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-amber-100 bg-amber-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">In Progress</CardTitle>
               <Wrench className="w-4 h-4 text-yellow-500" />
@@ -507,7 +507,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-emerald-100 bg-emerald-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Completed</CardTitle>
               <CheckCircle className="w-4 h-4 text-green-500" />
@@ -517,7 +517,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-violet-100 bg-violet-50/80">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Avg Rating</CardTitle>
                 <AlertCircle className="w-4 h-4 text-amber-500" />

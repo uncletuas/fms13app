@@ -68,6 +68,22 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   const [isCreateIssueOpen, setIsCreateIssueOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
+  const [equipmentImageUpdateFile, setEquipmentImageUpdateFile] = useState<File | null>(null);
+  const [equipmentImageUpdateUrl, setEquipmentImageUpdateUrl] = useState('');
+  const [isUpdatingEquipmentImage, setIsUpdatingEquipmentImage] = useState(false);
+
+  const resolveImageUrl = (value?: string) => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    if (trimmed.includes('drive.google.com')) {
+      const idMatch = trimmed.match(/\/d\/([^/]+)/) || trimmed.match(/[?&]id=([^&]+)/);
+      if (idMatch?.[1]) {
+        return `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
+      }
+    }
+    return trimmed;
+  };
   
   const [equipmentData, setEquipmentData] = useState({
     name: '',
@@ -79,8 +95,10 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     warrantyPeriod: '',
     contractorId: '',
     location: '',
-    facilityId: ''
+    facilityId: '',
+    imageUrl: ''
   });
+  const [equipmentImageFile, setEquipmentImageFile] = useState<File | null>(null);
   
   const [issueData, setIssueData] = useState({
     taskType: 'equipment',
@@ -133,6 +151,12 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     const interval = setInterval(() => loadNotificationCount(), 30000);
     return () => clearInterval(interval);
   }, [accessToken]);
+
+  useEffect(() => {
+    if (!selectedEquipment) return;
+    setEquipmentImageUpdateUrl(selectedEquipment.imageUrl || '');
+    setEquipmentImageUpdateFile(null);
+  }, [selectedEquipment]);
 
   useEffect(() => {
     if (!companyId) return;
@@ -226,12 +250,25 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
       const data = await response.json();
 
       if (data.success) {
+        if (equipmentImageFile && data.equipment?.id) {
+          const imageHeaders = await buildAuthHeaders();
+          if (imageHeaders) {
+            const formData = new FormData();
+            formData.append('file', equipmentImageFile);
+            await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment/${data.equipment.id}/image`, {
+              method: 'POST',
+              headers: imageHeaders,
+              body: formData
+            });
+          }
+        }
         toast.success('Equipment registered successfully');
         setIsCreateEquipmentOpen(false);
         setEquipmentData({
           name: '', category: '', brand: '', model: '', serialNumber: '',
-          installDate: '', warrantyPeriod: '', contractorId: '', location: '', facilityId: ''
+          installDate: '', warrantyPeriod: '', contractorId: '', location: '', facilityId: '', imageUrl: ''
         });
+        setEquipmentImageFile(null);
         loadDashboardData();
       } else {
         toast.error(data.error || 'Failed to register equipment');
@@ -239,6 +276,52 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     } catch (error) {
       console.error('Create equipment error:', error);
       toast.error('Failed to register equipment');
+    }
+  };
+
+  const handleUpdateEquipmentImage = async () => {
+    if (!selectedEquipment) return;
+    setIsUpdatingEquipmentImage(true);
+    try {
+      if (equipmentImageUpdateFile) {
+        const headers = await buildAuthHeaders();
+        if (!headers) return;
+        const formData = new FormData();
+        formData.append('file', equipmentImageUpdateFile);
+        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment/${selectedEquipment.id}/image`, {
+          method: 'POST',
+          headers,
+          body: formData
+        });
+        const data = await response.json();
+        if (!data.success) {
+          toast.error(data.error || 'Failed to upload image');
+          return;
+        }
+        setSelectedEquipment(data.equipment);
+      } else {
+        const headers = await buildAuthHeaders({ 'Content-Type': 'application/json' });
+        if (!headers) return;
+        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/equipment/${selectedEquipment.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ imageUrl: equipmentImageUpdateUrl })
+        });
+        const data = await response.json();
+        if (!data.success) {
+          toast.error(data.error || 'Failed to update image');
+          return;
+        }
+        setSelectedEquipment(data.equipment);
+      }
+
+      toast.success('Equipment image updated');
+      loadDashboardData();
+    } catch (error) {
+      console.error('Update equipment image error:', error);
+      toast.error('Failed to update equipment image');
+    } finally {
+      setIsUpdatingEquipmentImage(false);
     }
   };
 
@@ -521,8 +604,8 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="min-h-screen bg-background flex flex-col">
-          <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-6 py-4 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
+        <SidebarInset className="min-h-screen min-w-0 bg-background flex flex-col">
+          <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-4 py-4 sm:px-6 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-1 items-center gap-3">
                 <SidebarTrigger className="hidden md:inline-flex" />
@@ -539,7 +622,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
               <div className="flex flex-wrap items-center gap-2">
                 {companyBindings.length > 1 && (
                   <Select value={companyId} onValueChange={onCompanyChange}>
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger className="w-full sm:w-[200px]">
                       <Building2 className="w-4 h-4 mr-2" />
                       <SelectValue placeholder="Select company" />
                     </SelectTrigger>
@@ -582,11 +665,11 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto">
-            <div className="px-6 py-6 pb-24 space-y-6">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="px-4 py-6 pb-24 sm:px-6 space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card>
+          <Card className="border-sky-100 bg-sky-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Equipment</CardTitle>
               <Package className="w-4 h-4 text-slate-500" />
@@ -601,7 +684,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-rose-100 bg-rose-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Open Issues</CardTitle>
               <AlertCircle className="w-4 h-4 text-slate-500" />
@@ -612,7 +695,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-amber-100 bg-amber-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
               <CheckCircle className="w-4 h-4 text-slate-500" />
@@ -625,7 +708,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-emerald-100 bg-emerald-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Assigned Contractors</CardTitle>
               <Package className="w-4 h-4 text-slate-500" />
@@ -779,7 +862,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                   <div>
                     <Label className="text-xs text-slate-500">Status</Label>
                     <Select value={issueStatusFilter} onValueChange={setIssueStatusFilter}>
-                      <SelectTrigger className="h-8 w-[150px]">
+                      <SelectTrigger className="h-8 w-full sm:w-[150px]">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -798,7 +881,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                   <div>
                     <Label className="text-xs text-slate-500">Priority</Label>
                     <Select value={issuePriorityFilter} onValueChange={setIssuePriorityFilter}>
-                      <SelectTrigger className="h-8 w-[140px]">
+                      <SelectTrigger className="h-8 w-full sm:w-[140px]">
                         <SelectValue placeholder="Priority" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1047,6 +1130,27 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                           />
                         </div>
 
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="eq-image-url">Equipment Image URL (Optional)</Label>
+                            <Input
+                              id="eq-image-url"
+                              value={equipmentData.imageUrl}
+                              onChange={(e) => setEquipmentData({ ...equipmentData, imageUrl: e.target.value })}
+                              placeholder="https://drive.google.com/..."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="eq-image-file">Upload Image (Optional)</Label>
+                            <Input
+                              id="eq-image-file"
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => setEquipmentImageFile(e.target.files?.[0] || null)}
+                            />
+                          </div>
+                        </div>
+
                         <div className="space-y-2">
                           <Label htmlFor="eq-contractor">Assigned Contractor (Optional)</Label>
                           <Select
@@ -1084,7 +1188,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                   <div>
                     <Label className="text-xs text-slate-500">Health</Label>
                     <Select value={equipmentHealthFilter} onValueChange={setEquipmentHealthFilter}>
-                      <SelectTrigger className="h-8 w-[140px]">
+                      <SelectTrigger className="h-8 w-full sm:w-[140px]">
                         <SelectValue placeholder="Health" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1183,8 +1287,19 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
                           onClick={() => setSelectedEquipment(eq)}
                         >
                           <TableCell>
-                            <div className="font-medium text-slate-900">{eq.name}</div>
-                            <div className="text-xs text-slate-500">{eq.brand || '-'} {eq.model || ''}</div>
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-slate-200/70 bg-white/80 shadow-sm">
+                                {eq.imageUrl ? (
+                                  <img src={resolveImageUrl(eq.imageUrl)} alt={eq.name} className="h-full w-full object-cover" />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">IMG</div>
+                                )}
+                              </div>
+                              <div>
+                                <div className="font-medium text-slate-900">{eq.name}</div>
+                                <div className="text-xs text-slate-500">{eq.brand || '-'} {eq.model || ''}</div>
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell className="text-sm text-slate-600">{eq.category || '-'}</TableCell>
                           <TableCell>
@@ -1473,14 +1588,59 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <h3 className="font-semibold mb-2">{selectedEquipment.name}</h3>
-                <div className="text-sm text-slate-600 space-y-1">
+                <div className="flex flex-wrap items-start gap-4">
+                  <div className="h-24 w-24 overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-sm">
+                    {selectedEquipment.imageUrl ? (
+                      <img src={resolveImageUrl(selectedEquipment.imageUrl)} alt={selectedEquipment.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">No image</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <h3 className="font-semibold mb-2">{selectedEquipment.name}</h3>
+                    <div className="text-sm text-slate-600 space-y-1">
                   <p><span className="font-medium">Category:</span> {selectedEquipment.category}</p>
                   <p><span className="font-medium">Brand:</span> {selectedEquipment.brand} {selectedEquipment.model}</p>
                   {selectedEquipment.serialNumber && <p><span className="font-medium">Serial:</span> {selectedEquipment.serialNumber}</p>}
                   {selectedEquipment.location && <p><span className="font-medium">Location:</span> {selectedEquipment.location}</p>}
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {(activeRole === 'facility_manager' || activeRole === 'company_admin') && (
+                <div className="rounded-xl border border-slate-200/70 bg-white/90 p-4 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.5)]">
+                  <div className="text-sm font-semibold text-slate-800">Update equipment image</div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="equipment-image-url">Image URL</Label>
+                      <Input
+                        id="equipment-image-url"
+                        value={equipmentImageUpdateUrl}
+                        onChange={(e) => setEquipmentImageUpdateUrl(e.target.value)}
+                        placeholder="https://drive.google.com/..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="equipment-image-file">Upload file</Label>
+                      <Input
+                        id="equipment-image-file"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setEquipmentImageUpdateFile(e.target.files?.[0] || null)}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="mt-3"
+                    onClick={handleUpdateEquipmentImage}
+                    disabled={isUpdatingEquipmentImage}
+                  >
+                    {isUpdatingEquipmentImage ? 'Saving...' : 'Save Image'}
+                  </Button>
+                </div>
+              )}
 
                 {selectedEquipment.recordedBy && (
                   <ContactCard 

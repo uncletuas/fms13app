@@ -8,6 +8,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { toast } from 'sonner';
 import { Copy, Image as ImageIcon, Lock } from 'lucide-react';
 import { projectId } from '/utils/supabase/info';
+import { printActivityReport } from '@/app/components/table-export';
 
 interface ProfileSettingsProps {
   user: any;
@@ -21,6 +22,9 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
   const [isSaving, setIsSaving] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [reportStart, setReportStart] = useState('');
+  const [reportEnd, setReportEnd] = useState('');
+  const [isReportLoading, setIsReportLoading] = useState(false);
   const isFacilityManager = role === 'facility_manager';
   const contractorId = profile?.shortId || (profile?.id ? profile.id.slice(0, 6).toUpperCase() : '');
 
@@ -147,6 +151,43 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
       toast.error('Failed to update password');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDownloadActivityReport = async () => {
+    setIsReportLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (reportStart) params.set('start', reportStart);
+      if (reportEnd) params.set('end', reportEnd);
+
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/activity/user?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      const data = await response.json();
+      if (!data.success) {
+        toast.error(data.error || 'Failed to load activity report');
+        return;
+      }
+
+      const periodLabel = reportStart || reportEnd
+        ? `${reportStart || '...'} to ${reportEnd || '...'}`.replace(/^\.\.\. to \.\.\.$/, 'All time')
+        : 'All time';
+
+      printActivityReport({
+        title: 'Activity Summary Report',
+        periodLabel,
+        userName: profile?.name || profile?.email || 'User',
+        role,
+        activities: data.activities || []
+      });
+    } catch (error) {
+      console.error('Activity report error:', error);
+      toast.error('Failed to generate activity report');
+    } finally {
+      setIsReportLoading(false);
     }
   };
 
@@ -296,6 +337,39 @@ export function ProfileSettings({ user, role, accessToken, onProfileUpdated }: P
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Activity Report</CardTitle>
+            <CardDescription>Download a PDF summary of your recent activity.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="report-start">Start date</Label>
+                <Input
+                  id="report-start"
+                  type="date"
+                  value={reportStart}
+                  onChange={(e) => setReportStart(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="report-end">End date</Label>
+                <Input
+                  id="report-end"
+                  type="date"
+                  value={reportEnd}
+                  onChange={(e) => setReportEnd(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button variant="outline" className="w-full" onClick={handleDownloadActivityReport} disabled={isReportLoading}>
+              {isReportLoading ? 'Preparing report...' : 'Download PDF Summary'}
+            </Button>
+            <p className="text-xs text-slate-500">A printable report opens in a new tab for saving as PDF.</p>
+          </CardContent>
+        </Card>
 
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <div className="flex items-center justify-between">

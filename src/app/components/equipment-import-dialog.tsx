@@ -103,6 +103,7 @@ export function EquipmentImportDialog({
     { label: 'healthStatus', value: () => '' },
     { label: 'installDate', value: () => '' },
     { label: 'warrantyPeriod', value: () => '' },
+    { label: 'imageUrl', value: () => '' },
   ];
 
   const handleFileChange = async (file?: File | null) => {
@@ -129,6 +130,7 @@ export function EquipmentImportDialog({
         const category = normalized.category || normalized.equipment_category || normalized.equipmentcategory;
         const facility =
           normalized.facility_id
+          || normalized.facilityid
           || normalized.facility
           || normalized.facility_name
           || normalized.facility_branch
@@ -157,27 +159,29 @@ export function EquipmentImportDialog({
         }
       });
 
-      const preview = rows.slice(0, 5).map((row) => {
-        const normalized = Object.fromEntries(
-          Object.entries(row).map(([key, value]) => [normalizeKey(key), value])
-        );
-        return {
-          name: normalized.name || normalized.equipment || normalized.equipment_name || normalized.equipmentname || '',
-          category: normalized.category || normalized.equipment_category || normalized.equipmentcategory || '',
-          facility:
-            normalized.facility_id
-            || normalized.facility
-            || normalized.facility_name
-            || normalized.facility_branch
-            || normalized.branch
-            || normalized.branch_name
-            || normalized.facility_location
-            || normalized.location
-            || '',
-          location: normalized.location || '',
-          serialNumber: normalized.serialnumber || normalized.serial_number || ''
-        };
-      });
+        const preview = rows.slice(0, 5).map((row) => {
+          const normalized = Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [normalizeKey(key), value])
+          );
+          return {
+            name: normalized.name || normalized.equipment || normalized.equipment_name || normalized.equipmentname || '',
+            category: normalized.category || normalized.equipment_category || normalized.equipmentcategory || '',
+            facility:
+              normalized.facility_id
+              || normalized.facilityid
+              || normalized.facility
+              || normalized.facility_name
+              || normalized.facility_branch
+              || normalized.branch
+              || normalized.branch_name
+              || normalized.facility_location
+              || normalized.location
+              || '',
+            location: normalized.location || '',
+            serialNumber: normalized.serialnumber || normalized.serial_number || '',
+            imageUrl: normalized.image_url || normalized.imageurl || normalized.image || normalized.photo || normalized.picture || ''
+          };
+        });
       setPreviewRows(preview);
       setPreviewErrors(errors);
     } catch (error) {
@@ -286,12 +290,13 @@ export function EquipmentImportDialog({
               <div className="font-semibold text-slate-700">Preview (first {previewRows.length} of {previewCount})</div>
               <div className="mt-2 grid gap-1">
                 {previewRows.map((row, index) => (
-                  <div key={`${row.name}-${index}`} className="grid grid-cols-5 gap-2">
+                  <div key={`${row.name}-${index}`} className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                     <span className="truncate">{row.name || '-'}</span>
                     <span className="truncate">{row.category || '-'}</span>
                     <span className="truncate">{row.facility || '-'}</span>
                     <span className="truncate">{row.location || '-'}</span>
                     <span className="truncate">{row.serialNumber || '-'}</span>
+                    <span className="truncate">{row.imageUrl ? 'Image' : '-'}</span>
                   </div>
                 ))}
               </div>

@@ -95,6 +95,19 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   const [supervisorSearch, setSupervisorSearch] = useState('');
   const [contractorSearch, setContractorSearch] = useState('');
 
+  const resolveImageUrl = (value?: string) => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    if (trimmed.includes('drive.google.com')) {
+      const idMatch = trimmed.match(/\/d\/([^/]+)/) || trimmed.match(/[?&]id=([^&]+)/);
+      if (idMatch?.[1]) {
+        return `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
+      }
+    }
+    return trimmed;
+  };
+
   const buildAuthHeaders = async (extra?: Record<string, string>) => {
     const { headers, token } = await getAuthHeaders(accessToken);
     if (!token) {
@@ -687,9 +700,9 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="min-h-screen bg-background flex flex-col">
+        <SidebarInset className="min-h-screen min-w-0 bg-background flex flex-col">
       {/* Header */}
-        <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-6 py-4 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
+        <header className="sticky top-0 z-30 border-b border-white/70 bg-white/85 px-4 py-4 sm:px-6 backdrop-blur shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-1 items-center gap-3">
               <SidebarTrigger className="hidden md:inline-flex" />
@@ -706,7 +719,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             <div className="flex flex-wrap items-center gap-2">
             {companyBindings.length > 1 && (
               <Select value={companyId} onValueChange={onCompanyChange}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full sm:w-[200px]">
                   <Building2 className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
@@ -750,13 +763,13 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="px-6 py-6 pb-24 space-y-6">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="px-4 py-6 pb-24 sm:px-6 space-y-6">
         {activeTab === 'overview' && (
           <>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card>
+          <Card className="border-emerald-100 bg-emerald-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Facilities</CardTitle>
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -768,7 +781,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-sky-100 bg-sky-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Equipment</CardTitle>
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
@@ -785,7 +798,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-rose-100 bg-rose-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Open Issues</CardTitle>
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-50 text-rose-600">
@@ -798,7 +811,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-amber-100 bg-amber-50/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Team Members</CardTitle>
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-600">
@@ -1201,9 +1214,20 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
                           onClick={() => setSelectedEquipment(eq)}
                         >
                           <TableCell>
-                            <div className="font-medium text-slate-900">{eq.name}</div>
-                            <div className="text-xs text-slate-500">
-                              {eq.brand || '-'} {eq.model || ''}
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-slate-200/70 bg-white/80 shadow-sm">
+                                {eq.imageUrl ? (
+                                  <img src={resolveImageUrl(eq.imageUrl)} alt={eq.name} className="h-full w-full object-cover" />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">IMG</div>
+                                )}
+                              </div>
+                              <div>
+                                <div className="font-medium text-slate-900">{eq.name}</div>
+                                <div className="text-xs text-slate-500">
+                                  {eq.brand || '-'} {eq.model || ''}
+                                </div>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-sm text-slate-600">{eq.category || '-'}</TableCell>
@@ -1989,11 +2013,22 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <h3 className="font-semibold mb-2">{selectedEquipment.name}</h3>
-                <div className="text-sm text-slate-600 space-y-1">
+                <div className="flex flex-wrap items-start gap-4">
+                  <div className="h-24 w-24 overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-sm">
+                    {selectedEquipment.imageUrl ? (
+                      <img src={resolveImageUrl(selectedEquipment.imageUrl)} alt={selectedEquipment.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">No image</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <h3 className="font-semibold mb-2">{selectedEquipment.name}</h3>
+                    <div className="text-sm text-slate-600 space-y-1">
                   <p><span className="font-medium">Category:</span> {selectedEquipment.category}</p>
                   <p><span className="font-medium">Brand:</span> {selectedEquipment.brand} {selectedEquipment.model}</p>
                   {selectedEquipment.serialNumber && <p><span className="font-medium">Serial:</span> {selectedEquipment.serialNumber}</p>}
+                    </div>
+                  </div>
                 </div>
               </div>
 
