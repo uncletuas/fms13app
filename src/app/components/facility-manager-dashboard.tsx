@@ -140,10 +140,10 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   };
 
   useEffect(() => {
-    if (companyId) {
+    if (companyId && accessToken) {
       loadDashboardData();
     }
-  }, [companyId]);
+  }, [companyId, accessToken]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -159,7 +159,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
   }, [selectedEquipment]);
 
   useEffect(() => {
-    if (!companyId) return;
+    if (!companyId || !accessToken) return;
     const interval = setInterval(() => loadDashboardData(), 30000);
     const handleFocus = () => loadDashboardData();
     window.addEventListener('focus', handleFocus);
@@ -167,7 +167,7 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [companyId]);
+  }, [companyId, accessToken]);
 
   const loadDashboardData = async () => {
     try {
@@ -669,13 +669,16 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             <div className="px-4 py-6 pb-24 sm:px-6 space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="border-sky-100 bg-sky-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-sky-50 via-white to-sky-100/80 shadow-[0_18px_45px_-30px_rgba(14,165,233,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-sky-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Equipment</CardTitle>
-              <Package className="w-4 h-4 text-slate-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Equipment</CardTitle>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-white shadow-[0_10px_20px_-10px_rgba(14,165,233,0.7)]">
+                <Package className="w-4 h-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalEquipmentCount}</div>
+              <div className="text-2xl font-semibold text-slate-900">{totalEquipmentCount}</div>
               <div className="text-xs text-slate-500 mt-1">
                 <span className="text-green-600">o</span> {stats?.healthyEquipment || 0} Healthy
                 <span className="text-yellow-600 ml-2">o</span> {stats?.concerningEquipment || 0} Warning
@@ -684,37 +687,46 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
             </CardContent>
           </Card>
 
-          <Card className="border-rose-100 bg-rose-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-rose-50 via-white to-rose-100/80 shadow-[0_18px_45px_-30px_rgba(244,63,94,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-rose-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Open Issues</CardTitle>
-              <AlertCircle className="w-4 h-4 text-slate-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Open Issues</CardTitle>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-white shadow-[0_10px_20px_-10px_rgba(244,63,94,0.7)]">
+                <AlertCircle className="w-4 h-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.openIssues || 0}</div>
+              <div className="text-2xl font-semibold text-slate-900">{stats?.openIssues || 0}</div>
               <p className="text-xs text-red-600 mt-1">{stats?.criticalIssues || 0} Critical</p>
             </CardContent>
           </Card>
 
-          <Card className="border-amber-100 bg-amber-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-amber-50 via-white to-amber-100/80 shadow-[0_18px_45px_-30px_rgba(245,158,11,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-amber-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
-              <CheckCircle className="w-4 h-4 text-slate-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pending Approval</CardTitle>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-white shadow-[0_10px_20px_-10px_rgba(245,158,11,0.7)]">
+                <CheckCircle className="w-4 h-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-semibold text-slate-900">
                 {issues.filter(i => i.status === 'completed').length}
               </div>
               <p className="text-xs text-slate-500 mt-1">Awaiting your review</p>
             </CardContent>
           </Card>
 
-          <Card className="border-emerald-100 bg-emerald-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-emerald-50 via-white to-emerald-100/80 shadow-[0_18px_45px_-30px_rgba(16,185,129,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-emerald-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Assigned Contractors</CardTitle>
-              <Package className="w-4 h-4 text-slate-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Assigned Contractors</CardTitle>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_10px_20px_-10px_rgba(16,185,129,0.7)]">
+                <Users className="w-4 h-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{contractors.length}</div>
+              <div className="text-2xl font-semibold text-slate-900">{contractors.length}</div>
             </CardContent>
           </Card>
         </div>

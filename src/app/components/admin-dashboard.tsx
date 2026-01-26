@@ -154,10 +154,10 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   });
 
   useEffect(() => {
-    if (companyId) {
+    if (companyId && accessToken) {
       loadDashboardData();
     }
-  }, [companyId]);
+  }, [companyId, accessToken]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -167,7 +167,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
   }, [accessToken]);
 
   useEffect(() => {
-    if (!companyId) return;
+    if (!companyId || !accessToken) return;
     const interval = setInterval(() => loadDashboardData(), 30000);
     const handleFocus = () => loadDashboardData();
     window.addEventListener('focus', handleFocus);
@@ -175,7 +175,7 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [companyId]);
+  }, [companyId, accessToken]);
 
   const loadDashboardData = async () => {
     try {
@@ -769,10 +769,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
           <>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="border-emerald-100 bg-emerald-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-emerald-50 via-white to-emerald-100/80 shadow-[0_18px_45px_-30px_rgba(16,185,129,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-emerald-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Facilities</CardTitle>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_10px_20px_-10px_rgba(16,185,129,0.7)]">
                 <Building2 className="h-4 w-4" />
               </span>
             </CardHeader>
@@ -781,10 +782,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </CardContent>
           </Card>
 
-          <Card className="border-sky-100 bg-sky-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-sky-50 via-white to-sky-100/80 shadow-[0_18px_45px_-30px_rgba(14,165,233,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-sky-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Equipment</CardTitle>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-white shadow-[0_10px_20px_-10px_rgba(14,165,233,0.7)]">
                 <Package className="h-4 w-4" />
               </span>
             </CardHeader>
@@ -798,10 +800,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </CardContent>
           </Card>
 
-          <Card className="border-rose-100 bg-rose-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-rose-50 via-white to-rose-100/80 shadow-[0_18px_45px_-30px_rgba(244,63,94,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-rose-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Open Issues</CardTitle>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-white shadow-[0_10px_20px_-10px_rgba(244,63,94,0.7)]">
                 <AlertCircle className="h-4 w-4" />
               </span>
             </CardHeader>
@@ -811,10 +814,11 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
             </CardContent>
           </Card>
 
-          <Card className="border-amber-100 bg-amber-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-amber-50 via-white to-amber-100/80 shadow-[0_18px_45px_-30px_rgba(245,158,11,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-amber-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Team Members</CardTitle>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-white shadow-[0_10px_20px_-10px_rgba(245,158,11,0.7)]">
                 <Users className="h-4 w-4" />
               </span>
             </CardHeader>

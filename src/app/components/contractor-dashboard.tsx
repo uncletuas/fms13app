@@ -74,8 +74,10 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   };
 
   useEffect(() => {
-    loadDashboardData();
-  }, [companyId]);
+    if (companyId && accessToken) {
+      loadDashboardData();
+    }
+  }, [companyId, accessToken]);
 
   useEffect(() => {
     const loadCompanies = async () => {
@@ -139,7 +141,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
   };
 
   useEffect(() => {
-    if (!companyId) return;
+    if (!companyId || !accessToken) return;
     const interval = setInterval(() => loadDashboardData(), 30000);
     const handleFocus = () => loadDashboardData();
     window.addEventListener('focus', handleFocus);
@@ -147,7 +149,7 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [companyId]);
+  }, [companyId, accessToken]);
 
   const loadDashboardData = async () => {
     if (!companyId) {
@@ -477,55 +479,70 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
             <div className="px-4 py-6 pb-24 sm:px-6 space-y-6">
         {/* Stats Grid */}
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 ${companyId ? 'mb-6' : ''}`}>
-          <Card className="border-slate-200/80 bg-slate-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-slate-50 via-white to-slate-100/80 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.35)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-slate-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Assigned</CardTitle>
-              <Wrench className="w-4 h-4 text-slate-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Assigned</CardTitle>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-700 text-white shadow-[0_10px_20px_-10px_rgba(15,23,42,0.6)]">
+                <Wrench className="w-4 h-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalAssigned || 0}</div>
+              <div className="text-2xl font-semibold text-slate-900">{stats?.totalAssigned || 0}</div>
             </CardContent>
           </Card>
 
-          <Card className="border-sky-100 bg-sky-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-sky-50 via-white to-sky-100/80 shadow-[0_18px_45px_-30px_rgba(14,165,233,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-sky-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <Clock className="w-4 h-4 text-blue-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pending</CardTitle>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-white shadow-[0_10px_20px_-10px_rgba(14,165,233,0.7)]">
+                <Clock className="w-4 h-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats?.pending || 0}</div>
+              <div className="text-2xl font-semibold text-sky-700">{stats?.pending || 0}</div>
             </CardContent>
           </Card>
 
-          <Card className="border-amber-100 bg-amber-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-amber-50 via-white to-amber-100/80 shadow-[0_18px_45px_-30px_rgba(245,158,11,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-amber-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-              <Wrench className="w-4 h-4 text-yellow-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">In Progress</CardTitle>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-white shadow-[0_10px_20px_-10px_rgba(245,158,11,0.7)]">
+                <Wrench className="w-4 h-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats?.inProgress || 0}</div>
+              <div className="text-2xl font-semibold text-amber-700">{stats?.inProgress || 0}</div>
             </CardContent>
           </Card>
 
-          <Card className="border-emerald-100 bg-emerald-50/80">
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-emerald-50 via-white to-emerald-100/80 shadow-[0_18px_45px_-30px_rgba(16,185,129,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-emerald-200/40" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed</CardTitle>
-              <CheckCircle className="w-4 h-4 text-green-500" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Completed</CardTitle>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_10px_20px_-10px_rgba(16,185,129,0.7)]">
+                <CheckCircle className="w-4 h-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats?.completed || 0}</div>
+              <div className="text-2xl font-semibold text-emerald-700">{stats?.completed || 0}</div>
             </CardContent>
           </Card>
 
-          <Card className="border-violet-100 bg-violet-50/80">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Rating</CardTitle>
-                <AlertCircle className="w-4 h-4 text-amber-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-amber-600">
-                  {stats?.avgRating ? stats.avgRating.toFixed(1) : '-'}
-                </div>
+          <Card className="relative overflow-hidden border-transparent bg-gradient-to-br from-violet-50 via-white to-violet-100/80 shadow-[0_18px_45px_-30px_rgba(139,92,246,0.45)]">
+            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-violet-200/40" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-slate-500">Avg Rating</CardTitle>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500 text-white shadow-[0_10px_20px_-10px_rgba(139,92,246,0.7)]">
+                <AlertCircle className="w-4 h-4" />
+              </span>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-semibold text-violet-700">
+                {stats?.avgRating ? stats.avgRating.toFixed(1) : '-'}
+              </div>
               <p className="text-xs text-slate-500 mt-1">Out of 5.0</p>
             </CardContent>
           </Card>
