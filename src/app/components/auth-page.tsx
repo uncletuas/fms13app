@@ -243,20 +243,20 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#e5e7f4] text-foreground">
-      <div className="pointer-events-none absolute -top-24 right-0 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 left-0 h-72 w-72 rounded-full bg-[#cfd6f0]/50 blur-3xl" />
+    <div className="relative min-h-screen overflow-hidden bg-slate-100 text-foreground">
+      <div className="pointer-events-none absolute -top-28 right-0 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 left-0 h-96 w-96 rounded-full bg-slate-300/60 blur-3xl" />
 
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-10 lg:px-6">
-        <div className="grid w-full overflow-hidden rounded-[28px] bg-white shadow-[0_35px_80px_-50px_rgba(15,23,42,0.5)] lg:grid-cols-[1.05fr,0.95fr]">
-          <section className="relative min-h-[520px] overflow-hidden bg-gradient-to-br from-[#3b2a7a] via-[#3e2f87] to-[#3a2a72] px-8 py-10 text-white sm:px-10">
-            <div className="absolute -left-20 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-            <div className="absolute -right-24 top-12 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
-            <div className="absolute left-14 top-10 h-32 w-32 rounded-full bg-gradient-to-br from-[#7bd3e7] via-[#5bb1c9] to-[#3b86a3] opacity-70 blur-[2px]" />
-            <div className="absolute left-20 top-32 h-40 w-40 rounded-full bg-gradient-to-br from-[#5a7cff] via-[#6d6afb] to-[#8c5cf5] opacity-80 blur-[2px]" />
-            <div className="absolute left-8 top-24 h-44 w-44 rounded-full bg-gradient-to-br from-[#f2c24f] via-[#f7a845] to-[#f38b3e] opacity-80 blur-[2px]" />
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-12 lg:px-6">
+        <div className="grid w-full items-stretch gap-10 lg:grid-cols-[1.05fr,0.95fr]">
+          <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#182c44] via-[#1b3858] to-[#12263b] p-8 text-white shadow-[0_35px_80px_-50px_rgba(15,23,42,0.7)] sm:p-10">
+            <div className="pointer-events-none absolute -left-16 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+            <div className="pointer-events-none absolute -right-20 top-10 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+            <div className="pointer-events-none absolute left-8 top-12 h-40 w-40 rounded-full bg-gradient-to-br from-[#7bd3e7] via-[#5bb1c9] to-[#3b86a3] opacity-80 blur-[2px]" />
+            <div className="pointer-events-none absolute left-20 top-28 h-44 w-44 rounded-full bg-gradient-to-br from-[#f2c24f] via-[#f7a845] to-[#f38b3e] opacity-80 blur-[2px]" />
+            <div className="pointer-events-none absolute left-28 top-6 h-40 w-40 rounded-full bg-gradient-to-br from-[#7c9cff] via-[#6d6afb] to-[#8c5cf5] opacity-70 blur-[2px]" />
 
-            <div className="relative z-10 flex flex-col justify-between h-full">
+            <div className="relative z-10 flex h-full flex-col justify-between">
               <div>
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
@@ -268,49 +268,48 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                   </div>
                 </div>
                 <p className="mt-6 text-lg text-white/80">
-                  Manage facilities, equipment, and contractors with complete audit trails.
+                  Centralize facility intelligence, equipment history, and vendor performance in one secure workspace.
                 </p>
               </div>
 
-              <div className="mt-10 space-y-2 text-sm text-white/70">
+              <div className="mt-10 space-y-3 text-sm text-white/75">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-white/70" />
-                  <span>Invitation-only access and approvals</span>
+                  <span>Invitation-only visibility and approvals</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-white/70" />
-                  <span>Multi-branch visibility and oversight</span>
+                  <span>Multi-branch oversight with audit trails</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Wrench className="h-4 w-4 text-white/70" />
-                  <span>Vendor performance tracking built in</span>
+                  <span>Contractor response tracking & SLA analytics</span>
                 </div>
               </div>
 
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+              <div className="mt-10 flex flex-wrap items-center gap-3">
                 <Button className="rounded-full bg-white/15 text-white hover:bg-white/25">What to expect?</Button>
                 <Button variant="ghost" className="rounded-full border border-white/25 text-white hover:bg-white/10">
-                  Platform modules
+                  Explore modules
                 </Button>
               </div>
             </div>
           </section>
 
-          <section className="flex min-h-[520px] items-center justify-center bg-white px-6 py-10 sm:px-10">
-            <div className="w-full max-w-md">
+          <section className="flex items-center justify-center">
+            <div className="w-full rounded-[32px] bg-white p-8 shadow-[0_30px_70px_-50px_rgba(15,23,42,0.35)] sm:p-10">
               <div className="mb-6">
                 <p className="text-sm font-semibold text-slate-500">Hello,</p>
-                <h2 className="text-2xl font-semibold text-slate-900">Good Morning</h2>
-                <p className="mt-2 text-sm text-slate-500">Login your account</p>
+                <h2 className="text-2xl font-semibold text-slate-900">Good to see you</h2>
+                <p className="mt-2 text-sm text-slate-500">Log in or create an account to continue.</p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.2)]">
-                <Tabs defaultValue="login" className="space-y-6">
-                  <TabsList className="grid w-full grid-cols-3 bg-slate-100/80">
-                    <TabsTrigger value="login">Login</TabsTrigger>
-                    <TabsTrigger value="admin">Admin</TabsTrigger>
-                    <TabsTrigger value="contractor">Contractor</TabsTrigger>
-                  </TabsList>
+              <Tabs defaultValue="login" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-3 rounded-full bg-slate-100/90 p-1">
+                  <TabsTrigger value="login" className="rounded-full">Login</TabsTrigger>
+                  <TabsTrigger value="admin" className="rounded-full">Admin</TabsTrigger>
+                  <TabsTrigger value="contractor" className="rounded-full">Contractor</TabsTrigger>
+                </TabsList>
 
               <TabsContent value="login">
                 {recoveryMode ? (
@@ -335,7 +334,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                         required
                       />
                     </div>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
                       {isLoading ? 'Updating...' : 'Update Password'}
                     </Button>
                   </form>
@@ -363,7 +362,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                           required
                         />
                       </div>
-                      <Button type="submit" className="w-full" disabled={isLoading}>
+                      <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
                         {isLoading ? 'Signing in...' : 'Sign In'}
                       </Button>
                     </form>
@@ -380,7 +379,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                     </div>
 
                     {showForgotPassword && (
-                      <form onSubmit={handleForgotPassword} className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <form onSubmit={handleForgotPassword} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div className="space-y-2">
                           <Label htmlFor="reset-email">Reset email</Label>
                           <Input
@@ -392,7 +391,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                             required
                           />
                         </div>
-                        <Button type="submit" variant="outline" className="w-full" disabled={isLoading}>
+                        <Button type="submit" variant="outline" className="w-full rounded-full" disabled={isLoading}>
                           {isLoading ? 'Sending...' : 'Send Reset Email'}
                         </Button>
                       </form>
@@ -505,7 +504,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
                     {isLoading ? 'Creating account...' : 'Create Company Account'}
                   </Button>
                 </form>
@@ -578,13 +577,12 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                       onChange={(e) => setContractorData({ ...contractorData, specialization: e.target.value })}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
                     {isLoading ? 'Creating account...' : 'Register as Contractor'}
                   </Button>
                 </form>
               </TabsContent>
             </Tabs>
-              </div>
             </div>
           </section>
         </div>
