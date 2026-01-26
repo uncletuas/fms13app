@@ -38,7 +38,9 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
     password: ''
   });
 
-  const [contractorData, setContractorData] = useState({
+    const [activeTab, setActiveTab] = useState<'login' | 'admin' | 'contractor'>('login');
+
+const [contractorData, setContractorData] = useState({
     name: '',
     email: '',
     phone: '',
@@ -243,112 +245,54 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-100 text-foreground">
-      <div className="pointer-events-none absolute -top-32 right-0 h-96 w-96 rounded-full bg-primary/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-32 left-0 h-[28rem] w-[28rem] rounded-full bg-slate-300/60 blur-3xl" />
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#0f2b3a] via-[#184154] to-[#123644] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_55%)]" />
+      <div className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="mb-6 text-center">
+            <p className="text-xs uppercase tracking-[0.4em] text-white/70">FMS.13</p>
+            <h1 className="mt-2 text-2xl font-semibold text-white">User Login</h1>
+          </div>
 
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl items-stretch px-4 py-10 lg:px-6">
-        <div className="grid w-full items-stretch gap-8 lg:grid-cols-[1fr,1fr]">
-          <section className="relative hidden overflow-hidden rounded-[36px] bg-gradient-to-br from-[#172a43] via-[#1d3c5e] to-[#16283f] p-10 text-white shadow-[0_35px_90px_-50px_rgba(15,23,42,0.7)] lg:flex lg:flex-col">
-            <div className="pointer-events-none absolute -left-24 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-            <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
-                <Building2 className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.32em] text-white/70">FMS.13</p>
-                <h1 className="text-3xl font-semibold">Facility Management System</h1>
-              </div>
-            </div>
-
-            <div className="mt-10 flex flex-1 flex-col items-center justify-center">
-              <div className="relative flex h-56 w-72 items-center justify-center">
-                <div className="absolute h-44 w-44 rounded-full bg-white/10 blur-2xl" />
-                <div className="relative h-36 w-36 rounded-full bg-white/10 shadow-[0_30px_60px_-35px_rgba(0,0,0,0.6)]">
-                  <div className="absolute right-6 top-8 h-10 w-10 rounded-full bg-[#f2c24f] shadow-[0_12px_24px_-12px_rgba(242,194,79,0.8)]" />
-                  <div className="absolute -bottom-10 left-1/2 h-20 w-56 -translate-x-1/2 rounded-full bg-white/10" />
-                  <div className="absolute -bottom-4 left-1/2 h-10 w-40 -translate-x-1/2 rounded-full bg-white/15" />
-                </div>
-              </div>
-              <p className="mt-6 text-center text-sm text-white/75">
-                Calm control for complex facilities. Monitor assets, teams, and vendors with confidence.
-              </p>
-            </div>
-
-            <div className="mt-auto space-y-3 text-sm text-white/70">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-white/70" />
-                <span>Invitation-only access with full audit trails</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-white/70" />
-                <span>Multi-branch visibility and performance intelligence</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Wrench className="h-4 w-4 text-white/70" />
-                <span>Vendor SLAs, approvals, and maintenance history</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="flex items-center justify-center">
-            <div className="w-full rounded-[32px] bg-white p-8 shadow-[0_30px_70px_-50px_rgba(15,23,42,0.35)] sm:p-10">
-              <div className="mb-8">
-                <div className="mb-4 flex items-center gap-3 lg:hidden">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.32em] text-slate-400">FMS.13</p>
-                    <p className="text-sm font-semibold text-slate-700">Facility Management System</p>
-                  </div>
-                </div>
-                <p className="text-sm font-semibold text-slate-500">Hello,</p>
-                <h2 className="text-2xl font-semibold text-slate-900">Good Morning</h2>
-                <p className="mt-2 text-sm text-slate-500">Login to your account</p>
-              </div>
-
-              <Tabs defaultValue="login" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-3 rounded-full bg-slate-100/90 p-1">
-                  <TabsTrigger value="login" className="rounded-full">Login</TabsTrigger>
-                  <TabsTrigger value="admin" className="rounded-full">Admin</TabsTrigger>
-                  <TabsTrigger value="contractor" className="rounded-full">Contractor</TabsTrigger>
-                </TabsList>
-
+          <div className="rounded-[6px] bg-[#0b1a22]/90 p-6 shadow-[0_30px_60px_-40px_rgba(0,0,0,0.7)]">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="space-y-5">
               <TabsContent value="login">
                 {recoveryMode ? (
                   <form onSubmit={handleResetPassword} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="reset-password">New password</Label>
+                      <Label htmlFor="reset-password" className="text-xs text-white/70">New password</Label>
                       <Input
                         id="reset-password"
                         type="password"
                         value={resetPassword}
                         onChange={(e) => setResetPassword(e.target.value)}
                         required
+                        className="h-11 rounded-md border border-white/10 bg-white/90 text-slate-900"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="reset-confirm">Confirm password</Label>
+                      <Label htmlFor="reset-confirm" className="text-xs text-white/70">Confirm password</Label>
                       <Input
                         id="reset-confirm"
                         type="password"
                         value={confirmResetPassword}
                         onChange={(e) => setConfirmResetPassword(e.target.value)}
                         required
+                        className="h-11 rounded-md border border-white/10 bg-white/90 text-slate-900"
                       />
                     </div>
-                    <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
+                    <Button type="submit" className="w-full rounded-md bg-primary text-white" disabled={isLoading}>
                       {isLoading ? 'Updating...' : 'Update Password'}
+                    </Button>
+                    <Button type="button" variant="ghost" className="w-full text-xs text-white/70" onClick={() => setRecoveryMode(false)}>
+                      Back to login
                     </Button>
                   </form>
                 ) : (
                   <div className="space-y-4">
                     <form onSubmit={handleLogin} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="login-email">Email</Label>
+                        <Label htmlFor="login-email" className="text-xs text-white/70">Email ID</Label>
                         <Input
                           id="login-email"
                           type="email"
@@ -356,38 +300,38 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                           value={loginData.email}
                           onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
                           required
+                          className="h-11 rounded-md border border-white/10 bg-white/90 text-slate-900"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="login-password">Password</Label>
+                        <Label htmlFor="login-password" className="text-xs text-white/70">Password</Label>
                         <Input
                           id="login-password"
                           type="password"
                           value={loginData.password}
                           onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                           required
+                          className="h-11 rounded-md border border-white/10 bg-white/90 text-slate-900"
                         />
                       </div>
-                      <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
-                        {isLoading ? 'Signing in...' : 'Login'}
+                      <div className="flex items-center justify-between text-xs text-white/60">
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="h-3 w-3" />
+                          Remember me
+                        </label>
+                        <button type="button" className="text-xs text-white/70" onClick={() => setShowForgotPassword(true)}>
+                          Forgot Password?
+                        </button>
+                      </div>
+                      <Button type="submit" className="w-full rounded-md bg-primary text-white" disabled={isLoading}>
+                        {isLoading ? 'Signing in...' : 'LOGIN'}
                       </Button>
                     </form>
 
-                    <div className="text-right">
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="px-0 text-sm"
-                        onClick={() => setShowForgotPassword((prev) => !prev)}
-                      >
-                        Forgot password?
-                      </Button>
-                    </div>
-
                     {showForgotPassword && (
-                      <form onSubmit={handleForgotPassword} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <form onSubmit={handleForgotPassword} className="space-y-3 rounded-md border border-white/10 bg-white/5 p-3">
                         <div className="space-y-2">
-                          <Label htmlFor="reset-email">Reset email</Label>
+                          <Label htmlFor="reset-email" className="text-xs text-white/70">Reset email</Label>
                           <Input
                             id="reset-email"
                             type="email"
@@ -395,9 +339,10 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                             value={resetEmail}
                             onChange={(e) => setResetEmail(e.target.value)}
                             required
+                            className="h-10 rounded-md border border-white/10 bg-white/90 text-slate-900"
                           />
                         </div>
-                        <Button type="submit" variant="outline" className="w-full rounded-full" disabled={isLoading}>
+                        <Button type="submit" variant="outline" className="w-full rounded-md border-white/20 text-white" disabled={isLoading}>
                           {isLoading ? 'Sending...' : 'Send Reset Email'}
                         </Button>
                       </form>
@@ -407,75 +352,34 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
               </TabsContent>
 
               <TabsContent value="admin">
-                <form onSubmit={handleCompanyOnboarding} className="space-y-6">
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">Company details</p>
-                      <p className="text-xs text-slate-500">Create your company record and primary admin.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="company-name">Company name</Label>
-                      <Input
-                        id="company-name"
-                        type="text"
-                        placeholder="Kilimanjaro Restaurant - Port Harcourt"
-                        value={companyData.name}
-                        onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="company-industry">Industry</Label>
-                        <Input
-                          id="company-industry"
-                          type="text"
-                          placeholder="Food & Beverage"
-                          value={companyData.industry}
-                          onChange={(e) => setCompanyData({ ...companyData, industry: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="company-phone">Company phone</Label>
-                        <Input
-                          id="company-phone"
-                          type="tel"
-                          placeholder="+234 xxx xxx xxxx"
-                          value={companyData.phone}
-                          onChange={(e) => setCompanyData({ ...companyData, phone: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="company-address">Address</Label>
-                      <Input
-                        id="company-address"
-                        type="text"
-                        placeholder="Port Harcourt, Nigeria"
-                        value={companyData.address}
-                        onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
-                      />
-                    </div>
+                <form onSubmit={handleCompanyOnboarding} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="company-name" className="text-xs text-white/70">Company name</Label>
+                    <Input
+                      id="company-name"
+                      type="text"
+                      placeholder="Kilimanjaro Restaurant - Port Harcourt"
+                      value={companyData.name}
+                      onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
+                      required
+                      className="h-10 rounded-md border border-white/10 bg-white/90 text-slate-900"
+                    />
                   </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">Admin profile</p>
-                      <p className="text-xs text-slate-500">This account controls your facilities and staff.</p>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-name" className="text-xs text-white/70">Admin name</Label>
+                    <Input
+                      id="admin-name"
+                      type="text"
+                      placeholder="Jane Admin"
+                      value={adminData.name}
+                      onChange={(e) => setAdminData({ ...adminData, name: e.target.value })}
+                      required
+                      className="h-10 rounded-md border border-white/10 bg-white/90 text-slate-900"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="admin-name">Full name</Label>
-                      <Input
-                        id="admin-name"
-                        type="text"
-                        placeholder="Jane Admin"
-                        value={adminData.name}
-                        onChange={(e) => setAdminData({ ...adminData, name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="admin-email">Email</Label>
+                      <Label htmlFor="admin-email" className="text-xs text-white/70">Email</Label>
                       <Input
                         id="admin-email"
                         type="email"
@@ -483,35 +387,27 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                         value={adminData.email}
                         onChange={(e) => setAdminData({ ...adminData, email: e.target.value })}
                         required
+                        className="h-10 rounded-md border border-white/10 bg-white/90 text-slate-900"
                       />
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="admin-phone">Phone</Label>
-                        <Input
-                          id="admin-phone"
-                          type="tel"
-                          placeholder="+234 xxx xxx xxxx"
-                          value={adminData.phone}
-                          onChange={(e) => setAdminData({ ...adminData, phone: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="admin-password">Password</Label>
-                        <Input
-                          id="admin-password"
-                          type="password"
-                          value={adminData.password}
-                          onChange={(e) => setAdminData({ ...adminData, password: e.target.value })}
-                          required
-                          minLength={6}
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-password" className="text-xs text-white/70">Password</Label>
+                      <Input
+                        id="admin-password"
+                        type="password"
+                        value={adminData.password}
+                        onChange={(e) => setAdminData({ ...adminData, password: e.target.value })}
+                        required
+                        minLength={6}
+                        className="h-10 rounded-md border border-white/10 bg-white/90 text-slate-900"
+                      />
                     </div>
                   </div>
-
-                  <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full rounded-md bg-primary text-white" disabled={isLoading}>
                     {isLoading ? 'Creating account...' : 'Create Company Account'}
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full text-xs text-white/70" onClick={() => setActiveTab('login')}>
+                    Back to login
                   </Button>
                 </form>
               </TabsContent>
@@ -519,7 +415,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
               <TabsContent value="contractor">
                 <form onSubmit={handleContractorOnboarding} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="contractor-name">Full name</Label>
+                    <Label htmlFor="contractor-name" className="text-xs text-white/70">Full name</Label>
                     <Input
                       id="contractor-name"
                       type="text"
@@ -527,10 +423,11 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                       value={contractorData.name}
                       onChange={(e) => setContractorData({ ...contractorData, name: e.target.value })}
                       required
+                      className="h-10 rounded-md border border-white/10 bg-white/90 text-slate-900"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contractor-email">Email</Label>
+                    <Label htmlFor="contractor-email" className="text-xs text-white/70">Email</Label>
                     <Input
                       id="contractor-email"
                       type="email"
@@ -538,21 +435,23 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                       value={contractorData.email}
                       onChange={(e) => setContractorData({ ...contractorData, email: e.target.value })}
                       required
+                      className="h-10 rounded-md border border-white/10 bg-white/90 text-slate-900"
                     />
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="contractor-phone">Phone</Label>
+                      <Label htmlFor="contractor-phone" className="text-xs text-white/70">Phone</Label>
                       <Input
                         id="contractor-phone"
                         type="tel"
                         placeholder="+234 xxx xxx xxxx"
                         value={contractorData.phone}
                         onChange={(e) => setContractorData({ ...contractorData, phone: e.target.value })}
+                        className="h-10 rounded-md border border-white/10 bg-white/90 text-slate-900"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="contractor-password">Password</Label>
+                      <Label htmlFor="contractor-password" className="text-xs text-white/70">Password</Label>
                       <Input
                         id="contractor-password"
                         type="password"
@@ -560,37 +459,38 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                         onChange={(e) => setContractorData({ ...contractorData, password: e.target.value })}
                         required
                         minLength={6}
+                        className="h-10 rounded-md border border-white/10 bg-white/90 text-slate-900"
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contractor-skills">Skills (comma-separated)</Label>
-                    <Input
-                      id="contractor-skills"
-                      type="text"
-                      placeholder="Plumbing, Electrical, HVAC"
-                      value={contractorData.skills}
-                      onChange={(e) => setContractorData({ ...contractorData, skills: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contractor-specialization">Specialization</Label>
-                    <Input
-                      id="contractor-specialization"
-                      type="text"
-                      placeholder="Commercial kitchen equipment"
-                      value={contractorData.specialization}
-                      onChange={(e) => setContractorData({ ...contractorData, specialization: e.target.value })}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full rounded-md bg-primary text-white" disabled={isLoading}>
                     {isLoading ? 'Creating account...' : 'Register as Contractor'}
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full text-xs text-white/70" onClick={() => setActiveTab('login')}>
+                    Back to login
                   </Button>
                 </form>
               </TabsContent>
             </Tabs>
+          </div>
+
+          {activeTab === 'login' && (
+            <Button
+              type="button"
+              className="mt-4 w-full rounded-[4px] bg-[#0b1a22]/80 text-white"
+              onClick={() => setActiveTab('admin')}
+            >
+              REGISTER
+            </Button>
+          )}
+          {activeTab !== 'login' && (
+            <div className="mt-4 flex items-center justify-between text-xs text-white/70">
+              <span>Need a contractor account?</span>
+              <button type="button" className="text-white/80" onClick={() => setActiveTab(activeTab === 'contractor' ? 'admin' : 'contractor')}>
+                Switch to {activeTab === 'contractor' ? 'Admin' : 'Contractor'}
+              </button>
             </div>
-          </section>
+          )}
         </div>
       </div>
     </div>
