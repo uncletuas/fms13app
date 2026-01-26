@@ -658,6 +658,15 @@ const buildDecisionLinks = (issueId: string, token: string) => {
   };
 };
 
+const buildInvitationDecisionLinks = (invitationId: string, token: string) => {
+  const base = `${ACTION_BASE_URL}/contractor-invitations/${invitationId}/respond-email?token=${encodeURIComponent(token)}`;
+  return {
+    actionUrl: base,
+    acceptUrl: `${base}&decision=approved`,
+    rejectUrl: `${base}&decision=rejected`,
+  };
+};
+
 const sendEmail = async (params: { to: string | string[]; subject: string; html: string; text?: string }) => {
   if (!RESEND_API_KEY) {
     console.log('Resend API key not configured; skipping email.');
@@ -924,11 +933,101 @@ const renderEmailPage = (body: string, title = 'FMS13 Invitation') => `
   </html>
 `;
 
+const applyInvitationDecision = async (params: {
+  invitation: any;
+  decision: 'approved' | 'rejected';
+  reason?: string;
+  respondedEmail?: string;
+}) => {
+  const { invitation, decision, reason, respondedEmail } = params;
+  await kv.set(`contractor-invitation:${invitation.id}`, {
+    ...invitation,
+    status: decision,
+    respondedAt: new Date().toISOString(),
+    responseReason: reason || '',
+    respondedEmail: respondedEmail || '',
+    emailDecisionToken: null
+  });
+
+  const contractorProfile = await kv.get(`user:${invitation.contractorId}`);
+  const actorName = contractorProfile?.name || 'Contractor';
+
+  if (decision === 'approved') {
+    await kv.set(`user-company:${invitation.contractorId}:${invitation.companyId}`, {
+      userId: invitation.contractorId,
+      companyId: invitation.companyId,
+      role: 'contractor',
+      facilityIds: invitation.facilityIds || [],
+      categories: invitation.categories || [],
+      status: 'active',
+      assignedAt: new Date().toISOString(),
+    });
+    await upsertCompanyUser({
+      userId: invitation.contractorId,
+      companyId: invitation.companyId,
+      role: 'contractor',
+      facilityIds: invitation.facilityIds || [],
+      assignedAt: new Date().toISOString(),
+    });
+    await upsertCompanyContractor({
+      companyId: invitation.companyId,
+      contractorId: invitation.contractorId,
+      status: 'active'
+    });
+
+    await logActivity({
+      entityType: 'user',
+      entityId: invitation.contractorId,
+      action: 'contractor_approved_invitation',
+      userId: invitation.contractorId,
+      userName: actorName,
+      userRole: 'contractor',
+      companyId: invitation.companyId,
+      details: { invitationId: invitation.id }
+    });
+
+    const notificationId = generateId('NOT');
+    await kv.set(`notification:${notificationId}`, {
+      id: notificationId,
+      userId: invitation.invitedBy,
+      companyId: invitation.companyId,
+      message: `Contractor ${actorName} accepted your invitation`,
+      type: 'contractor_approved',
+      read: false,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    await logActivity({
+      entityType: 'user',
+      entityId: invitation.contractorId,
+      action: 'contractor_rejected_invitation',
+      userId: invitation.contractorId,
+      userName: actorName,
+      userRole: 'contractor',
+      companyId: invitation.companyId,
+      details: { invitationId: invitation.id, reason: reason || '' }
+    });
+
+    const notificationId = generateId('NOT');
+    await kv.set(`notification:${notificationId}`, {
+      id: notificationId,
+      userId: invitation.invitedBy,
+      companyId: invitation.companyId,
+      message: `Contractor ${actorName} declined your invitation`,
+      type: 'contractor_rejected',
+      read: false,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
 const buildInvitationEmail = (params: {
   companyName: string;
   invitedByName?: string;
   categories?: string[];
   facilityIds?: string[];
+  acceptUrl?: string;
+  rejectUrl?: string;
   actionUrl?: string;
 }) => {
   const facilityLine = params.facilityIds && params.facilityIds.length
@@ -938,10 +1037,22 @@ const buildInvitationEmail = (params: {
     ? `<div><span style="color:#64748b;">Scope</span><div style="font-weight:600;color:#0f172a;">${params.categories.join(', ')}</div></div>`
     : '';
   const actionLine = params.actionUrl
-    ? `<a href="${params.actionUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;">Review invitation</a>`
+    ? `<a href="${params.actionUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;">View invitation details</a>`
+    : '';
+  const acceptLine = params.acceptUrl
+    ? `<a href="${params.acceptUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;margin-right:8px;">Accept invitation</a>`
+    : '';
+  const rejectLine = params.rejectUrl
+    ? `<a href="${params.rejectUrl}" style="display:inline-block;background:#f1f5f9;color:#0f172a;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;">Reject invitation</a>`
     : '';
   const actionLink = params.actionUrl
     ? `<p style="margin:12px 0 0;color:#64748b;font-size:13px;">If the button doesn't open, copy this link:<br /><span style="color:#0f172a;word-break:break-all;">${params.actionUrl}</span></p>`
+    : '';
+  const acceptLink = params.acceptUrl
+    ? `<p style="margin:12px 0 0;color:#64748b;font-size:13px;">Accept link: <span style="color:#0f172a;word-break:break-all;">${params.acceptUrl}</span></p>`
+    : '';
+  const rejectLink = params.rejectUrl
+    ? `<p style="margin:6px 0 0;color:#64748b;font-size:13px;">Reject link: <span style="color:#0f172a;word-break:break-all;">${params.rejectUrl}</span></p>`
     : '';
 
   return {
@@ -969,9 +1080,11 @@ const buildInvitationEmail = (params: {
                         ${facilityLine}
                         ${categoryLine}
                       </div>
-                      <div style="margin:20px 0;">${actionLine}</div>
+                      <div style="margin:20px 0; display:flex; flex-wrap:wrap; gap:8px;">${acceptLine}${rejectLine}${actionLine}</div>
                       <p style="margin:0;color:#94a3b8;font-size:13px;">This secure link is unique to your email and expires after you respond. Do not forward it.</p>
                       ${actionLink}
+                      ${acceptLink}
+                      ${rejectLink}
                     </td>
                   </tr>
                   <tr>
@@ -4095,13 +4208,15 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
     });
 
     if (contractorEmail) {
-      const actionUrl = `${ACTION_BASE_URL}/contractor-invitations/${invitationId}/respond-email?token=${encodeURIComponent(emailDecisionToken)}`;
+      const { actionUrl, acceptUrl, rejectUrl } = buildInvitationDecisionLinks(invitationId, emailDecisionToken);
       const invitationEmail = buildInvitationEmail({
         companyName: company.name,
         invitedByName: userProfile.name,
         categories,
         facilityIds,
-        actionUrl
+        actionUrl,
+        acceptUrl,
+        rejectUrl
       });
       await sendEmail({
         to: contractorEmail,
@@ -4960,13 +5075,15 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
     });
 
     if (contractorEmail) {
-      const actionUrl = `${ACTION_BASE_URL}/contractor-invitations/${invitationId}/respond-email?token=${encodeURIComponent(emailDecisionToken)}`;
+      const { actionUrl, acceptUrl, rejectUrl } = buildInvitationDecisionLinks(invitationId, emailDecisionToken);
       const invitationEmail = buildInvitationEmail({
         companyName: company.name,
         invitedByName: userProfile.name,
         categories,
         facilityIds,
-        actionUrl
+        actionUrl,
+        acceptUrl,
+        rejectUrl
       });
       await sendEmail({
         to: contractorEmail,
@@ -5023,6 +5140,7 @@ app.get("/make-server-fc558f72/contractor-invitations/:id/respond-email", async 
   try {
     const invitationId = c.req.param('id');
     const token = c.req.query('token');
+    const decision = c.req.query('decision');
 
     if (!token) {
       return c.html(renderEmailPage(`
@@ -5065,7 +5183,7 @@ app.get("/make-server-fc558f72/contractor-invitations/:id/respond-email", async 
       `), 200);
     }
 
-    const actionUrl = `${ACTION_BASE_URL}/contractor-invitations/${invitationId}/respond-email?token=${encodeURIComponent(token)}`;
+    const { actionUrl, acceptUrl, rejectUrl } = buildInvitationDecisionLinks(invitationId, token);
     const facilities = await Promise.all(
       (invitation.facilityIds || []).map(async (facilityId: string) => {
         const record = await kv.get(`facility:${facilityId}`);
@@ -5074,9 +5192,25 @@ app.get("/make-server-fc558f72/contractor-invitations/:id/respond-email", async 
     );
     const facilityText = facilities.length ? facilities.join(', ') : 'All assigned facilities';
     const categoryText = invitation.categories?.length ? invitation.categories.join(', ') : 'General services';
-    const invitedEmail = normalizeEmail(invitation.contractorEmail || await getUserEmail(invitation.contractorId));
-    const maskedEmail = invitedEmail ? maskEmail(invitedEmail) : 'the invited email address';
     c.header('Cache-Control', 'no-store');
+
+    if (decision && ['approved', 'rejected'].includes(decision)) {
+      await applyInvitationDecision({
+        invitation,
+        decision: decision as 'approved' | 'rejected',
+        reason: ''
+      });
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Invitation ${decision === 'approved' ? 'accepted' : 'rejected'}</h1>
+          <div class="status">
+            <p>Your response has been recorded and reflected in your account.</p>
+            <p class="note">You can close this page.</p>
+          </div>
+        </div>
+      `));
+    }
 
     return c.html(`
       ${renderEmailPage(`
@@ -5112,19 +5246,13 @@ app.get("/make-server-fc558f72/contractor-invitations/:id/respond-email", async 
             </div>
           </div>
           <div class="divider"></div>
-          <h2>Confirm your email to respond</h2>
-          <p>For security, this link only works for ${maskedEmail}. Enter the invitation email to continue.</p>
-          <form method="POST" action="${actionUrl}">
-            <label class="label">Invitation email</label>
-            <input class="input" type="email" name="email" required placeholder="name@company.com" />
-            <label class="label" style="margin-top:16px;">Rejection reason (optional)</label>
-            <textarea class="textarea" name="reason" placeholder="Share a brief reason if declining."></textarea>
-            <div class="actions">
-              <button class="btn primary" type="submit" name="decision" value="approved">Accept invitation</button>
-              <button class="btn secondary" type="submit" name="decision" value="rejected">Reject invitation</button>
-            </div>
-            <p class="note">This response is logged and visible to the company admin.</p>
-          </form>
+          <h2>Respond now</h2>
+          <p>Use the email buttons to respond instantly, or click below.</p>
+          <div class="actions">
+            <a class="btn primary" href="${acceptUrl}" style="text-decoration:none;">Accept invitation</a>
+            <a class="btn secondary" href="${rejectUrl}" style="text-decoration:none;">Reject invitation</a>
+          </div>
+          <p class="note">Your response is logged and visible to the company admin.</p>
         </div>
       `, 'FMS13 Invitation Review')}
     `);
@@ -5145,13 +5273,18 @@ app.post("/make-server-fc558f72/contractor-invitations/:id/respond-email", async
     const invitationId = c.req.param('id');
     const token = c.req.query('token');
     if (!token) {
-      return c.html('<p>Missing response token.</p>', 400);
+      return c.html(renderEmailPage(`
+        <div class="card">
+          <div class="eyebrow">Secure Invitation</div>
+          <h1>Missing response token</h1>
+          <p>The invitation link is incomplete. Please reopen the link from your email.</p>
+        </div>
+      `), 400);
     }
 
     const formData = await c.req.formData();
     const decision = formData.get('decision')?.toString();
     const reason = formData.get('reason')?.toString() || '';
-    const submittedEmail = normalizeEmail(formData.get('email')?.toString());
 
     if (!decision || !['approved', 'rejected'].includes(decision)) {
       return c.html(renderEmailPage(`
@@ -5194,106 +5327,11 @@ app.post("/make-server-fc558f72/contractor-invitations/:id/respond-email", async
       `), 200);
     }
 
-    if (!submittedEmail) {
-      return c.html(renderEmailPage(`
-        <div class="card">
-          <div class="eyebrow">Secure Invitation</div>
-          <h1>Email required</h1>
-          <p>Please enter the email address that received this invitation.</p>
-        </div>
-      `), 400);
-    }
-
-    const allowedEmail = normalizeEmail(invitation.contractorEmail || await getUserEmail(invitation.contractorId));
-    if (allowedEmail && submittedEmail !== allowedEmail) {
-      return c.html(renderEmailPage(`
-        <div class="card">
-          <div class="eyebrow">Secure Invitation</div>
-          <h1>Email does not match</h1>
-          <p>This invitation can only be accepted by the email it was sent to.</p>
-        </div>
-      `), 403);
-    }
-
-    await kv.set(`contractor-invitation:${invitationId}`, {
-      ...invitation,
-      status: decision,
-      respondedAt: new Date().toISOString(),
-      responseReason: reason || '',
-      respondedEmail: submittedEmail,
-      emailDecisionToken: null
+    await applyInvitationDecision({
+      invitation,
+      decision: decision as 'approved' | 'rejected',
+      reason
     });
-
-    const contractorProfile = await kv.get(`user:${invitation.contractorId}`);
-    const actorName = contractorProfile?.name || 'Contractor';
-
-    if (decision === 'approved') {
-      await kv.set(`user-company:${invitation.contractorId}:${invitation.companyId}`, {
-        userId: invitation.contractorId,
-        companyId: invitation.companyId,
-        role: 'contractor',
-        facilityIds: invitation.facilityIds || [],
-        categories: invitation.categories || [],
-        status: 'active',
-        assignedAt: new Date().toISOString(),
-      });
-      await upsertCompanyUser({
-        userId: invitation.contractorId,
-        companyId: invitation.companyId,
-        role: 'contractor',
-        facilityIds: invitation.facilityIds || [],
-        assignedAt: new Date().toISOString(),
-      });
-      await upsertCompanyContractor({
-        companyId: invitation.companyId,
-        contractorId: invitation.contractorId,
-        status: 'active'
-      });
-
-      await logActivity({
-        entityType: 'user',
-        entityId: invitation.contractorId,
-        action: 'contractor_approved_invitation',
-        userId: invitation.contractorId,
-        userName: actorName,
-        userRole: 'contractor',
-        companyId: invitation.companyId,
-        details: { invitationId }
-      });
-
-      const notificationId = generateId('NOT');
-      await kv.set(`notification:${notificationId}`, {
-        id: notificationId,
-        userId: invitation.invitedBy,
-        companyId: invitation.companyId,
-        message: `Contractor ${actorName} accepted your invitation`,
-        type: 'contractor_approved',
-        read: false,
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      await logActivity({
-        entityType: 'user',
-        entityId: invitation.contractorId,
-        action: 'contractor_rejected_invitation',
-        userId: invitation.contractorId,
-        userName: actorName,
-        userRole: 'contractor',
-        companyId: invitation.companyId,
-        details: { invitationId, reason }
-      });
-
-      const notificationId = generateId('NOT');
-      await kv.set(`notification:${notificationId}`, {
-        id: notificationId,
-        userId: invitation.invitedBy,
-        companyId: invitation.companyId,
-        message: `Contractor ${actorName} declined your invitation`,
-        type: 'contractor_rejected',
-        read: false,
-        timestamp: new Date().toISOString()
-      });
-    }
 
     return c.html(renderEmailPage(`
       <div class="card">
