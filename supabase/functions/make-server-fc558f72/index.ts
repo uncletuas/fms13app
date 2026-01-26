@@ -32,6 +32,15 @@ const ATTACHMENTS_BUCKET = Deno.env.get('ATTACHMENTS_BUCKET')
   ?? 'fms13-attachments';
 const FUNCTION_BASE_URL = `${(Deno.env.get('SUPABASE_URL') ?? '').replace(/\/$/, '')}/functions/v1/make-server-fc558f72`;
 const ACTION_BASE_URL = (Deno.env.get('ACTION_BASE_URL') ?? FUNCTION_BASE_URL).replace(/\/$/, '');
+const APP_BASE_URL = (
+  Deno.env.get('APP_BASE_URL')
+  ?? Deno.env.get('APP_URL')
+  ?? Deno.env.get('FRONTEND_BASE_URL')
+  ?? Deno.env.get('FRONTEND_URL')
+  ?? Deno.env.get('PUBLIC_SITE_URL')
+  ?? Deno.env.get('SITE_URL')
+  ?? ''
+).replace(/\/$/, '');
 
 // Enable logger
 app.use('*', logger(console.log));
@@ -1026,8 +1035,6 @@ const buildInvitationEmail = (params: {
   invitedByName?: string;
   categories?: string[];
   facilityIds?: string[];
-  acceptUrl?: string;
-  rejectUrl?: string;
   actionUrl?: string;
 }) => {
   const facilityLine = params.facilityIds && params.facilityIds.length
@@ -1037,22 +1044,10 @@ const buildInvitationEmail = (params: {
     ? `<div><span style="color:#64748b;">Scope</span><div style="font-weight:600;color:#0f172a;">${params.categories.join(', ')}</div></div>`
     : '';
   const actionLine = params.actionUrl
-    ? `<a href="${params.actionUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;">View invitation details</a>`
-    : '';
-  const acceptLine = params.acceptUrl
-    ? `<a href="${params.acceptUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;margin-right:8px;">Accept invitation</a>`
-    : '';
-  const rejectLine = params.rejectUrl
-    ? `<a href="${params.rejectUrl}" style="display:inline-block;background:#f1f5f9;color:#0f172a;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;">Reject invitation</a>`
+    ? `<a href="${params.actionUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;">Sign in to respond</a>`
     : '';
   const actionLink = params.actionUrl
     ? `<p style="margin:12px 0 0;color:#64748b;font-size:13px;">If the button doesn't open, copy this link:<br /><span style="color:#0f172a;word-break:break-all;">${params.actionUrl}</span></p>`
-    : '';
-  const acceptLink = params.acceptUrl
-    ? `<p style="margin:12px 0 0;color:#64748b;font-size:13px;">Accept link: <span style="color:#0f172a;word-break:break-all;">${params.acceptUrl}</span></p>`
-    : '';
-  const rejectLink = params.rejectUrl
-    ? `<p style="margin:6px 0 0;color:#64748b;font-size:13px;">Reject link: <span style="color:#0f172a;word-break:break-all;">${params.rejectUrl}</span></p>`
     : '';
 
   return {
@@ -1080,11 +1075,9 @@ const buildInvitationEmail = (params: {
                         ${facilityLine}
                         ${categoryLine}
                       </div>
-                      <div style="margin:20px 0; display:flex; flex-wrap:wrap; gap:8px;">${acceptLine}${rejectLine}${actionLine}</div>
-                      <p style="margin:0;color:#94a3b8;font-size:13px;">This secure link is unique to your email and expires after you respond. Do not forward it.</p>
+                      <div style="margin:20px 0;">${actionLine}</div>
+                      <p style="margin:0;color:#94a3b8;font-size:13px;">Sign in to your FMS13 account to accept or reject this invitation.</p>
                       ${actionLink}
-                      ${acceptLink}
-                      ${rejectLink}
                     </td>
                   </tr>
                   <tr>
@@ -4208,15 +4201,13 @@ app.post("/make-server-fc558f72/users/assign-contractor", async (c) => {
     });
 
     if (contractorEmail) {
-      const { actionUrl, acceptUrl, rejectUrl } = buildInvitationDecisionLinks(invitationId, emailDecisionToken);
+      const actionUrl = APP_BASE_URL || '';
       const invitationEmail = buildInvitationEmail({
         companyName: company.name,
         invitedByName: userProfile.name,
         categories,
         facilityIds,
-        actionUrl,
-        acceptUrl,
-        rejectUrl
+        actionUrl
       });
       await sendEmail({
         to: contractorEmail,
@@ -5075,15 +5066,13 @@ app.post("/make-server-fc558f72/contractor-invitations", async (c) => {
     });
 
     if (contractorEmail) {
-      const { actionUrl, acceptUrl, rejectUrl } = buildInvitationDecisionLinks(invitationId, emailDecisionToken);
+      const actionUrl = APP_BASE_URL || '';
       const invitationEmail = buildInvitationEmail({
         companyName: company.name,
         invitedByName: userProfile.name,
         categories,
         facilityIds,
-        actionUrl,
-        acceptUrl,
-        rejectUrl
+        actionUrl
       });
       await sendEmail({
         to: contractorEmail,
