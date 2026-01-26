@@ -68,15 +68,9 @@ export default function App() {
       console.error('Session bootstrap error:', error);
     }
 
-    const cached = loadStoredProfile();
-    if (cached.user) {
-      setUser(cached.user);
-      setCompanyBindings(cached.bindings || []);
-      if (cached.bindings?.length > 0) {
-        setSelectedCompany(cached.bindings[0].companyId);
-        setCurrentRole(cached.bindings[0].role);
-      }
-    }
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('companyBindings');
+    localStorage.removeItem('selectedCompanyId');
   };
 
   useEffect(() => {
