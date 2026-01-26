@@ -244,64 +244,70 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-100 text-foreground">
-      <div className="pointer-events-none absolute -top-28 right-0 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-32 left-0 h-96 w-96 rounded-full bg-slate-300/60 blur-3xl" />
+      <div className="pointer-events-none absolute -top-32 right-0 h-96 w-96 rounded-full bg-primary/15 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 left-0 h-[28rem] w-[28rem] rounded-full bg-slate-300/60 blur-3xl" />
 
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-12 lg:px-6">
-        <div className="grid w-full items-stretch gap-10 lg:grid-cols-[1.05fr,0.95fr]">
-          <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#182c44] via-[#1b3858] to-[#12263b] p-8 text-white shadow-[0_35px_80px_-50px_rgba(15,23,42,0.7)] sm:p-10">
-            <div className="pointer-events-none absolute -left-16 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-            <div className="pointer-events-none absolute -right-20 top-10 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-            <div className="pointer-events-none absolute left-8 top-12 h-40 w-40 rounded-full bg-gradient-to-br from-[#7bd3e7] via-[#5bb1c9] to-[#3b86a3] opacity-80 blur-[2px]" />
-            <div className="pointer-events-none absolute left-20 top-28 h-44 w-44 rounded-full bg-gradient-to-br from-[#f2c24f] via-[#f7a845] to-[#f38b3e] opacity-80 blur-[2px]" />
-            <div className="pointer-events-none absolute left-28 top-6 h-40 w-40 rounded-full bg-gradient-to-br from-[#7c9cff] via-[#6d6afb] to-[#8c5cf5] opacity-70 blur-[2px]" />
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl items-stretch px-4 py-10 lg:px-6">
+        <div className="grid w-full items-stretch gap-8 lg:grid-cols-[1fr,1fr]">
+          <section className="relative hidden overflow-hidden rounded-[36px] bg-gradient-to-br from-[#172a43] via-[#1d3c5e] to-[#16283f] p-10 text-white shadow-[0_35px_90px_-50px_rgba(15,23,42,0.7)] lg:flex lg:flex-col">
+            <div className="pointer-events-none absolute -left-24 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+            <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
 
-            <div className="relative z-10 flex h-full flex-col justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
+                <Building2 className="h-6 w-6 text-white" />
+              </div>
               <div>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
-                    <Building2 className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.32em] text-white/70">FMS.13</p>
-                    <h1 className="text-3xl font-semibold">Facility Management System</h1>
-                  </div>
-                </div>
-                <p className="mt-6 text-lg text-white/80">
-                  Centralize facility intelligence, equipment history, and vendor performance in one secure workspace.
-                </p>
+                <p className="text-xs uppercase tracking-[0.32em] text-white/70">FMS.13</p>
+                <h1 className="text-3xl font-semibold">Facility Management System</h1>
               </div>
+            </div>
 
-              <div className="mt-10 space-y-3 text-sm text-white/75">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-white/70" />
-                  <span>Invitation-only visibility and approvals</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-white/70" />
-                  <span>Multi-branch oversight with audit trails</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Wrench className="h-4 w-4 text-white/70" />
-                  <span>Contractor response tracking & SLA analytics</span>
+            <div className="mt-10 flex flex-1 flex-col items-center justify-center">
+              <div className="relative flex h-56 w-72 items-center justify-center">
+                <div className="absolute h-44 w-44 rounded-full bg-white/10 blur-2xl" />
+                <div className="relative h-36 w-36 rounded-full bg-white/10 shadow-[0_30px_60px_-35px_rgba(0,0,0,0.6)]">
+                  <div className="absolute right-6 top-8 h-10 w-10 rounded-full bg-[#f2c24f] shadow-[0_12px_24px_-12px_rgba(242,194,79,0.8)]" />
+                  <div className="absolute -bottom-10 left-1/2 h-20 w-56 -translate-x-1/2 rounded-full bg-white/10" />
+                  <div className="absolute -bottom-4 left-1/2 h-10 w-40 -translate-x-1/2 rounded-full bg-white/15" />
                 </div>
               </div>
+              <p className="mt-6 text-center text-sm text-white/75">
+                Calm control for complex facilities. Monitor assets, teams, and vendors with confidence.
+              </p>
+            </div>
 
-              <div className="mt-10 flex flex-wrap items-center gap-3">
-                <Button className="rounded-full bg-white/15 text-white hover:bg-white/25">What to expect?</Button>
-                <Button variant="ghost" className="rounded-full border border-white/25 text-white hover:bg-white/10">
-                  Explore modules
-                </Button>
+            <div className="mt-auto space-y-3 text-sm text-white/70">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-white/70" />
+                <span>Invitation-only access with full audit trails</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-white/70" />
+                <span>Multi-branch visibility and performance intelligence</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-white/70" />
+                <span>Vendor SLAs, approvals, and maintenance history</span>
               </div>
             </div>
           </section>
 
           <section className="flex items-center justify-center">
             <div className="w-full rounded-[32px] bg-white p-8 shadow-[0_30px_70px_-50px_rgba(15,23,42,0.35)] sm:p-10">
-              <div className="mb-6">
+              <div className="mb-8">
+                <div className="mb-4 flex items-center gap-3 lg:hidden">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.32em] text-slate-400">FMS.13</p>
+                    <p className="text-sm font-semibold text-slate-700">Facility Management System</p>
+                  </div>
+                </div>
                 <p className="text-sm font-semibold text-slate-500">Hello,</p>
-                <h2 className="text-2xl font-semibold text-slate-900">Good to see you</h2>
-                <p className="mt-2 text-sm text-slate-500">Log in or create an account to continue.</p>
+                <h2 className="text-2xl font-semibold text-slate-900">Good Morning</h2>
+                <p className="mt-2 text-sm text-slate-500">Login to your account</p>
               </div>
 
               <Tabs defaultValue="login" className="space-y-6">
@@ -363,7 +369,7 @@ export function AuthPage({ onLoginSuccess }: AuthPageProps) {
                         />
                       </div>
                       <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
-                        {isLoading ? 'Signing in...' : 'Sign In'}
+                        {isLoading ? 'Signing in...' : 'Login'}
                       </Button>
                     </form>
 
