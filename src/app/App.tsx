@@ -7,7 +7,7 @@ import { CompanySelector } from '@/app/components/company-selector';
 import { Toaster } from '@/app/components/ui/sonner';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { projectId } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { supabase } from '/utils/supabase/client';
 
 export default function App() {
@@ -40,7 +40,9 @@ export default function App() {
     try {
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/auth/session`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'x-access-token': token,
+          apikey: publicAnonKey,
         }
       });
       const data = await response.json();

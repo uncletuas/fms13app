@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
 import { Building2, LogOut } from 'lucide-react';
-import { projectId } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 interface CompanySelectorProps {
   companyBindings: any[];
@@ -29,7 +29,9 @@ export function CompanySelector({ companyBindings, accessToken, onSelectCompany,
       
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-fc558f72/companies`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
+          'x-access-token': accessToken,
+          apikey: publicAnonKey,
         }
       });
 
