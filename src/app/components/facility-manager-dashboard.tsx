@@ -486,33 +486,36 @@ export function FacilityManagerDashboard({ user, accessToken, onLogout, companyI
     );
   };
 
+  const globalQuery = globalSearch.trim().toLowerCase();
   const issueQuery = issueSearch.trim().toLowerCase();
   const filteredIssues = issues.filter((issue) => {
-    const matchesQuery = !issueQuery
-      || `${issue.equipmentName || ''} ${issue.title || ''} ${issue.description || ''} ${issue.id} ${issue.reportedBy?.name || ''}`
-        .toLowerCase()
-        .includes(issueQuery);
+    const issueText = `${issue.equipmentName || ''} ${issue.title || ''} ${issue.description || ''} ${issue.id} ${issue.reportedBy?.name || ''}`
+      .toLowerCase();
+    const matchesQuery = !issueQuery || issueText.includes(issueQuery);
+    const matchesGlobal = !globalQuery || issueText.includes(globalQuery);
     const matchesStatus = issueStatusFilter === 'all' || issue.status === issueStatusFilter;
     const matchesPriority = issuePriorityFilter === 'all' || issue.priority === issuePriorityFilter;
     const matchesDate = inDateRange(issue.createdAt || issue.updatedAt, issueStartDate, issueEndDate);
-    return matchesQuery && matchesStatus && matchesPriority && matchesDate;
+    return matchesQuery && matchesGlobal && matchesStatus && matchesPriority && matchesDate;
   });
 
   const equipmentQuery = equipmentSearch.trim().toLowerCase();
   const filteredEquipment = equipment.filter((eq) => {
-    const matchesQuery = !equipmentQuery
-      || `${eq.name} ${eq.category} ${eq.location || ''} ${eq.id}`.toLowerCase().includes(equipmentQuery);
+    const equipmentText = `${eq.name} ${eq.category} ${eq.location || ''} ${eq.id}`.toLowerCase();
+    const matchesQuery = !equipmentQuery || equipmentText.includes(equipmentQuery);
+    const matchesGlobal = !globalQuery || equipmentText.includes(globalQuery);
     const matchesHealth = equipmentHealthFilter === 'all' || eq.healthStatus === equipmentHealthFilter;
     const matchesDate = inDateRange(eq.createdAt || eq.recordedAt, equipmentStartDate, equipmentEndDate);
-    return matchesQuery && matchesHealth && matchesDate;
+    return matchesQuery && matchesGlobal && matchesHealth && matchesDate;
   });
 
   const contractorQuery = contractorSearch.trim().toLowerCase();
   const filteredContractors = contractors.filter((contractor) => {
-    const matchesQuery = !contractorQuery
-      || `${contractor.name} ${contractor.email || ''} ${contractor.phone || ''}`.toLowerCase().includes(contractorQuery);
+    const contractorText = `${contractor.name} ${contractor.email || ''} ${contractor.phone || ''}`.toLowerCase();
+    const matchesQuery = !contractorQuery || contractorText.includes(contractorQuery);
+    const matchesGlobal = !globalQuery || contractorText.includes(globalQuery);
     const matchesDate = inDateRange(contractor.createdAt, contractorStartDate, contractorEndDate);
-    return matchesQuery && matchesDate;
+    return matchesQuery && matchesGlobal && matchesDate;
   });
   const activeContractors = contractors.filter((contractor) => contractor?.binding?.status !== 'suspended');
   const avatarUrl = user?.avatarUrl || user?.avatar_url || user?.profile?.avatarUrl;

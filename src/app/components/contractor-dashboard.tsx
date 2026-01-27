@@ -264,15 +264,16 @@ export function ContractorDashboard({ user, accessToken, onLogout, companyId, co
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
+  const globalQuery = globalSearch.trim().toLowerCase();
   const issueQuery = issueSearch.trim().toLowerCase();
   const filteredIssues = sortedIssues.filter((issue) => {
-    const matchesQuery = !issueQuery
-      || `${issue.equipmentName || ''} ${issue.title || ''} ${issue.description || ''} ${issue.id} ${issue.reportedBy?.name || ''}`
-        .toLowerCase()
-        .includes(issueQuery);
+    const issueText = `${issue.equipmentName || ''} ${issue.title || ''} ${issue.description || ''} ${issue.id} ${issue.reportedBy?.name || ''}`
+      .toLowerCase();
+    const matchesQuery = !issueQuery || issueText.includes(issueQuery);
+    const matchesGlobal = !globalQuery || issueText.includes(globalQuery);
     const matchesPriority = issuePriorityFilter === 'all' || issue.priority === issuePriorityFilter;
     const matchesDate = inDateRange(issue.createdAt || issue.updatedAt, issueStartDate, issueEndDate);
-    return matchesQuery && matchesPriority && matchesDate;
+    return matchesQuery && matchesGlobal && matchesPriority && matchesDate;
   });
 
   const pendingIssues = filteredIssues.filter(i => ['created', 'assigned'].includes(i.status));

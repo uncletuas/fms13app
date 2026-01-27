@@ -539,59 +539,64 @@ export function AdminDashboard({ user, accessToken, onLogout, companyId, company
     return `${hours}h ${minutes}m`;
   };
 
+  const globalQuery = globalSearch.trim().toLowerCase();
   const issueQuery = issueSearch.trim().toLowerCase();
   const filteredIssues = issues.filter((issue) => {
-    const matchesQuery = !issueQuery
-      || `${issue.equipmentName} ${issue.description} ${issue.id} ${issue.reportedBy?.name || ''}`
-        .toLowerCase()
-        .includes(issueQuery);
+    const issueText = `${issue.equipmentName} ${issue.description} ${issue.id} ${issue.reportedBy?.name || ''}`
+      .toLowerCase();
+    const matchesQuery = !issueQuery || issueText.includes(issueQuery);
+    const matchesGlobal = !globalQuery || issueText.includes(globalQuery);
     const matchesStatus = issueStatusFilter === 'all' || issue.status === issueStatusFilter;
     const matchesPriority = issuePriorityFilter === 'all' || issue.priority === issuePriorityFilter;
     const matchesDate = inDateRange(issue.createdAt || issue.updatedAt, issueStartDate, issueEndDate);
-    return matchesQuery && matchesStatus && matchesPriority && matchesDate;
+    return matchesQuery && matchesGlobal && matchesStatus && matchesPriority && matchesDate;
   });
 
   const equipmentQuery = equipmentSearch.trim().toLowerCase();
   const filteredEquipment = equipment.filter((eq) => {
-    const matchesQuery = !equipmentQuery
-      || `${eq.name} ${eq.category} ${eq.location || ''} ${eq.id}`.toLowerCase().includes(equipmentQuery);
+    const equipmentText = `${eq.name} ${eq.category} ${eq.location || ''} ${eq.id}`.toLowerCase();
+    const matchesQuery = !equipmentQuery || equipmentText.includes(equipmentQuery);
+    const matchesGlobal = !globalQuery || equipmentText.includes(globalQuery);
     const matchesHealth = equipmentHealthFilter === 'all' || eq.healthStatus === equipmentHealthFilter;
     const matchesDate = inDateRange(eq.createdAt || eq.recordedAt, equipmentStartDate, equipmentEndDate);
-    return matchesQuery && matchesHealth && matchesDate;
+    return matchesQuery && matchesGlobal && matchesHealth && matchesDate;
   });
 
   const facilityQuery = facilitySearch.trim().toLowerCase();
   const filteredFacilities = facilities.filter((facility) => {
-    const matchesQuery = !facilityQuery
-      || `${facility.name} ${facility.location || ''} ${facility.address || ''} ${facility.id}`
-        .toLowerCase()
-        .includes(facilityQuery);
-    return matchesQuery;
+    const facilityText = `${facility.name} ${facility.location || ''} ${facility.address || ''} ${facility.id}`
+      .toLowerCase();
+    const matchesQuery = !facilityQuery || facilityText.includes(facilityQuery);
+    const matchesGlobal = !globalQuery || facilityText.includes(globalQuery);
+    return matchesQuery && matchesGlobal;
   });
 
   const managerQuery = managerSearch.trim().toLowerCase();
   const filteredManagers = companyUsers
     .filter((user) => user.role === 'facility_manager')
     .filter((fm) => {
-      const matchesQuery = !managerQuery
-        || `${fm.name} ${fm.email || ''} ${fm.phone || ''}`.toLowerCase().includes(managerQuery);
-      return matchesQuery;
+      const managerText = `${fm.name} ${fm.email || ''} ${fm.phone || ''}`.toLowerCase();
+      const matchesQuery = !managerQuery || managerText.includes(managerQuery);
+      const matchesGlobal = !globalQuery || managerText.includes(globalQuery);
+      return matchesQuery && matchesGlobal;
     });
 
   const supervisorQuery = supervisorSearch.trim().toLowerCase();
   const filteredSupervisors = companyUsers
     .filter((user) => user.role === 'facility_supervisor')
     .filter((sup) => {
-      const matchesQuery = !supervisorQuery
-        || `${sup.name} ${sup.email || ''} ${sup.phone || ''}`.toLowerCase().includes(supervisorQuery);
-      return matchesQuery;
+      const supervisorText = `${sup.name} ${sup.email || ''} ${sup.phone || ''}`.toLowerCase();
+      const matchesQuery = !supervisorQuery || supervisorText.includes(supervisorQuery);
+      const matchesGlobal = !globalQuery || supervisorText.includes(globalQuery);
+      return matchesQuery && matchesGlobal;
     });
 
   const contractorQuery = contractorSearch.trim().toLowerCase();
   const filteredContractors = contractors.filter((contractor) => {
-    const matchesQuery = !contractorQuery
-      || `${contractor.name} ${contractor.email || ''} ${contractor.phone || ''}`.toLowerCase().includes(contractorQuery);
-    return matchesQuery;
+    const contractorText = `${contractor.name} ${contractor.email || ''} ${contractor.phone || ''}`.toLowerCase();
+    const matchesQuery = !contractorQuery || contractorText.includes(contractorQuery);
+    const matchesGlobal = !globalQuery || contractorText.includes(globalQuery);
+    return matchesQuery && matchesGlobal;
   });
   const avatarUrl = user?.avatarUrl || user?.avatar_url || user?.profile?.avatarUrl;
   const initials = (user?.name || 'User')
